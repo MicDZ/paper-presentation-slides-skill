@@ -1,6 +1,6 @@
 ---
 name: paper-presentation-slides
-description: Create source-grounded LaTeX Beamer slides for an assigned research paper using the bundled MBZUAI theme. Use for paper presentations, reading-group talks, or editable paper slide decks; do not use for Zotero close-reading notes or general-purpose presentations.
+description: Create source-grounded LaTeX Beamer slides for an assigned research paper using the upstream MBZUAI theme. Use for paper presentations, reading-group talks, or editable paper slide decks; do not use for Zotero close-reading notes or general-purpose presentations.
 ---
 
 # Paper Presentation Slides
@@ -15,7 +15,7 @@ Turn one identified paper into an editable, reproducible, visually checked Beame
 4. Read [references/design-guide.md](references/design-guide.md) before outlining or writing frames.
 5. If the deck contains displayed mathematics, read [references/formula-notation.md](references/formula-notation.md) before implementing formula frames.
 6. If the deliverable combines several papers, also read [references/multi-paper-talks.md](references/multi-paper-talks.md).
-7. Initialize a new project with the bundled helper unless the user supplied an existing deck to edit:
+7. Initialize a new project with the helper unless the user supplied an existing deck to edit. By default it fetches the latest `main` revision of `MicDZ/MBZUAI_Beamer_Theme`, including the paper-talk template, and records the resolved commit:
 
 ```bash
 python3 <skill-dir>/scripts/new_slide_project.py <output-directory> \
@@ -23,7 +23,15 @@ python3 <skill-dir>/scripts/new_slide_project.py <output-directory> \
   --confirm-default-footer
 ```
 
-Do not replace the MBZUAI theme unless the user asks. Preserve an existing deck's theme and structure when editing rather than reinitializing it.
+Use `--theme-ref <tag-or-commit>` when the user needs a pinned theme version, or `--theme-dir <checkout>` when working offline. Do not substitute a different theme repository unless the user asks. Preserve an existing deck's structure when editing rather than reinitializing it.
+
+To refresh the theme files of an existing generated project without overwriting its `main.tex` or paper figures, run only after the user requests or accepts the update:
+
+```bash
+python3 <skill-dir>/scripts/sync_theme.py <project-directory> --yes
+```
+
+After any theme refresh, recompile and repeat the full visual QA because typography, spacing, headers, and footers may move.
 
 ## Build the talk
 
@@ -57,7 +65,7 @@ Then perform one full visual pass after all content is present and another after
 - visual inspection showing balanced composition, intentional negative space, no clipping/overlap, no broken glyphs, readable text, undistorted figures, and no misleading emphasis;
 - a formula-by-formula notation audit with no unexplained uncommon symbol, accent, index, operator, type/shape, or objective term;
 - title-page presenter and all three footer fields matching the user's confirmed wording exactly;
-- an editable project containing the theme and all dependencies needed to rebuild;
+- an editable project containing the fetched theme snapshot, `THEME_UPSTREAM.md`, and all dependencies needed to rebuild;
 - `SOURCES.md` recording paper/version, every external asset or reconstructed visual, data/code transformations, repository commits, licenses, and retrieval dates;
 - a compiled PDF whose claims and page count match any outline or speaker notes.
 

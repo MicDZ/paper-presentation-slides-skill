@@ -28,9 +28,21 @@ For custom wording, replace `--confirm-default-footer` with:
 
 The helper refuses to initialize without a presenter and one of these two footer confirmations. When editing an existing deck, compare its title and `\footleft`, `\footmid`, and `\footright` fields with the user's reply before final compilation.
 
-The helper copies the pinned MBZUAI theme and creates `main.tex`, `paper-source/`, `figures/`, `data/`, `build/`, `rendered/`, and `SOURCES.md`. The theme snapshot and upstream commit are recorded in `assets/MBZUAI_Beamer_Theme/UPSTREAM.md`. Refresh it only when the user requests an update or a verified theme defect requires one.
+The helper fetches `MicDZ/MBZUAI_Beamer_Theme` and its paper-presentation template, then creates `main.tex`, `paper-source/`, `figures/`, `data/`, `build/`, `rendered/`, and `SOURCES.md`. It follows the repository's `main` branch by default so newly created decks receive theme improvements. The exact resolved commit is recorded in `THEME_UPSTREAM.md` and `SOURCES.md`, while a local copy of the theme files keeps the generated deck reproducible.
+
+Use `--theme-ref <tag-or-commit>` for a pinned release. Use `--theme-dir <local-checkout>` when working offline or testing unpublished theme changes. Theme retrieval uses `git` directly and does not require browser automation.
 
 Use a descriptive output directory. Keep paper downloads immutable under `paper-source/`; put only selected presentation assets in `figures/`, and any public raw data plus transformation code in `data/`.
+
+### Refresh an existing project's theme
+
+When the user requests or accepts a theme update, run:
+
+```bash
+python3 <skill-dir>/scripts/sync_theme.py <project-directory> --yes
+```
+
+The sync helper overwrites only theme-owned `.sty` files, theme assets, and theme provenance/license files. It does not change `main.tex`, paper figures, data, or sources. Pass `--theme-ref` to select a tag/commit, or `--theme-dir` for a local checkout. Recompile and perform the complete visual inspection after every refresh; a theme-only diff can still change layout.
 
 ## 2. Acquire the best evidence
 
@@ -81,7 +93,7 @@ For adaptations, say `Adapted from`; for synthesis, say `Presenter synthesis bas
 
 ## 5. Compile without hiding failure
 
-Use the bundled helper:
+Use the build helper:
 
 ```bash
 python3 <skill-dir>/scripts/build_slide_project.py <project-directory>
@@ -110,7 +122,8 @@ Check:
 - source locator visibility and attribution wording;
 - title-page authorship/presenter distinction;
 - exact agreement between confirmed presenter/footer wording and the rendered title/footline;
-- consistency between actual page count, outline, speaker notes, and any merged-deck bookmarks.
+- consistency between actual page count, outline, speaker notes, and any merged-deck bookmarks;
+- the resolved theme commit in `THEME_UPSTREAM.md` and `SOURCES.md`, especially after a refresh.
 
 After fixing any page, recompile and inspect the changed page plus its neighbors. Do a second full-deck pass after the last layout edit. Then perform a final evidence audit: shrinking or cropping must not remove qualifiers, legends, error bars, notation, or source context.
 

@@ -73,7 +73,7 @@ Do not inflate a qualitative downstream demonstration into task-level success. `
 
 ## Visual system
 
-- Use 16:9 MBZUAI Beamer with the pinned navy/sand theme.
+- Use 16:9 MBZUAI Beamer with the navy/sand theme fetched from `MicDZ/MBZUAI_Beamer_Theme`. Record the resolved commit for every generated deck.
 - Keep title and closing frames free of normal footers and frame titles. Use the standard `\\mbzuaiThankYou` closing frame.
 - Distinguish paper authors from the speaker, e.g. `Paper by ... -- Presented by ...`.
 - Prefer one dominant visual or table. Two-column layouts work when one side explains and the other supplies evidence; three equal columns work for input/output/challenge or stage summaries.
@@ -95,6 +95,8 @@ Choose a layout after estimating the actual content volume, not before. Two colu
 - Intentional asymmetry is acceptable when the empty space clearly isolates a hero visual or single thesis. It must look deliberate at thumbnail size.
 
 Review the whole deck as a contact sheet for repeated imbalance and pacing, then inspect each slide full size. Re-render after corrections; source inspection alone cannot approve layout.
+
+A theme refresh invalidates earlier visual approval. Recompile and repeat the balance, clipping, typography, header, and footer checks even when `main.tex` did not change.
 
 ## Tables and numbers
 

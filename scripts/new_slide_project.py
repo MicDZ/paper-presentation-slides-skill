@@ -1,213 +1,19 @@
 #!/usr/bin/env python3
-"""Create a reproducible MBZUAI Beamer project for one research paper."""
+"""Create a reproducible paper-talk project from the upstream MBZUAI theme."""
 
 from __future__ import annotations
 
 import argparse
-import shutil
 import sys
 from pathlib import Path
 
-
-MAIN_TEX = r"""\documentclass[aspectratio=169,11pt]{beamer}
-
-\usepackage{amsmath,amssymb,bm,mathtools}
-\usepackage{booktabs,multirow,array}
-\usepackage{graphicx,adjustbox}
-\usepackage{pifont}
-\usetheme{MBZUAI}
-\graphicspath{{assets/}{figures/}{paper-source/}}
-
-\setbeamertemplate{navigation symbols}{}
-\setlength{\abovedisplayskip}{5pt}
-\setlength{\belowdisplayskip}{5pt}
-
-\newcommand{\cmark}{\textcolor{mbzuai-navy}{\ding{51}}}
-\newcommand{\xmark}{\textcolor{red!70!black}{\ding{55}}}
-\newcommand{\strong}[1]{\textcolor{mbzuai-navy}{\textbf{#1}}}
-\newcommand{\framesource}[1]{%
-  \par\hfill{\tiny\color{mbzuai-subtle}#1}%
-}
-
-\title[@@SHORT_TITLE@@]{@@TITLE@@}
-\subtitle{@@SUBTITLE@@}
-\author[@@PRESENTER@@]{Paper by @@AUTHORS@@ -- Presented by \textit{@@PRESENTER@@}}
-\institute[RCL]{@@VENUE@@}
-\date{@@DATE@@}
-
-\titlelogos{assets/logo_dark.pdf}
-\footleft{@@FOOT_LEFT@@}
-\footmid{@@FOOT_CENTER@@}
-\footright{@@FOOT_RIGHT@@}
-
-\begin{document}
-
-{
-\setbeamertemplate{footline}{}
-\setbeamertemplate{frametitle}{}
-\begin{frame}[t]
-  \titlepage
-\end{frame}
-}
-
-% Build an argument, not a copy of the paper's section order.
-\section{Question and Thesis}
-
-\begin{frame}{The paper's central question in one sentence}
-  \small
-  \begin{columns}[T,onlytextwidth]
-    \begin{column}{0.31\textwidth}
-      \strong{Input}\par
-      State what the method receives.
-    \end{column}
-    \begin{column}{0.34\textwidth}
-      \strong{Output}\par
-      State what it must produce or predict.
-    \end{column}
-    \begin{column}{0.31\textwidth}
-      \strong{Why it is hard}\par
-      Name the uncertainty, bottleneck, or tradeoff.
-    \end{column}
-  \end{columns}
-  \framesource{Paper Sec. 1}
-\end{frame}
-
-\begin{frame}{The thesis should answer the question}
-  \begin{block}{Paper's thesis}
-    Replace this with one precise, source-backed claim.
-  \end{block}
-  \begin{alertblock}{Presenter roadmap}
-    Name the minimum method mechanism and decisive evidence needed to evaluate it.
-  \end{alertblock}
-  \framesource{Paper Secs. 1 and 3}
-\end{frame}
-
-\section{Method}
-
-\begin{frame}{The method title should state what changes and why}
-  \begin{columns}[T,onlytextwidth]
-    \begin{column}{0.58\textwidth}
-      \centering
-      % \includegraphics[width=\linewidth,height=0.58\textheight,keepaspectratio]{overview.pdf}
-      \fbox{\parbox[c][0.48\textheight][c]{0.9\linewidth}{\centering Place one legible original or adapted figure here.}}
-    \end{column}
-    \begin{column}{0.38\textwidth}
-      \small
-      \begin{enumerate}
-        \item Name the representation or state.
-        \item Explain the transformation.
-        \item State the operational consequence.
-      \end{enumerate}
-    \end{column}
-  \end{columns}
-  \framesource{Paper Fig. X and Sec. Y}
-\end{frame}
-
-% Delete this frame when mathematics does not advance the talk.
-\begin{frame}{The central equation must expose the mechanism}
-  \small
-  \begin{equation*}
-    \widehat y_t=f_\theta(x_{1:t},c),
-    \qquad
-    \theta^\star=\arg\min_\theta \mathcal L(\widehat y_t,y_t).
-  \end{equation*}
-  \vspace{-2mm}
-  {\centering
-    \footnotesize
-    \setlength{\tabcolsep}{3pt}
-    \renewcommand{\arraystretch}{0.98}
-    \begin{tabular}{@{}p{0.15\linewidth}p{0.19\linewidth}p{0.57\linewidth}@{}}
-      \toprule
-      \textbf{Symbol} & \textbf{Type / status} & \textbf{Paper-specific meaning and role} \\
-      \midrule
-      $t,1{:}t$ & index / range & Current step and inclusive input-history range. \\
-      $x_{1:t},c$ & input / condition & Observed sequence and condition; give exact types and shapes. \\
-      $f_\theta$ & learned function & Maps inputs to the prediction under parameters $\theta$. \\
-      $\widehat y_t,y_t$ & prediction / target & Model output and target; the hat marks an estimate. \\
-      $\mathcal L,\theta^\star$ & scalar / optimum & Training objective and its minimizing parameters; explain every term. \\
-      \bottomrule
-    \end{tabular}
-    \par}
-  \vspace{1mm}
-  \begin{alertblock}{Operational meaning}
-    \footnotesize Replace this scaffold with what the paper computes, what is optimized or fixed, and how the output drives the next method stage.
-  \end{alertblock}
-  \framesource{Paper Eq. X and Sec. Y}
-\end{frame}
-
-\section{Evidence}
-
-\begin{frame}{The evaluation must test the stated thesis}
-  \small
-  \begin{columns}[T,onlytextwidth]
-    \begin{column}{0.43\textwidth}
-      \begin{block}{Protocol}
-        Dataset, split, sample count, preprocessing, hardware, and comparison conditions.
-      \end{block}
-    \end{column}
-    \begin{column}{0.53\textwidth}
-      \begin{block}{Metric meaning}
-        Translate every reported metric into the question it answers.
-      \end{block}
-      \begin{alertblock}{Caveat}
-        State conditional averaging, exclusions, or a comparability limitation.
-      \end{alertblock}
-    \end{column}
-  \end{columns}
-  \framesource{Paper Sec. X and Table Y}
-\end{frame}
-
-\begin{frame}{The decisive result, including its important exception}
-  \begin{block}{Supported result}
-    Report the exact value, denominator, metric direction, and test condition.
-  \end{block}
-  \begin{alertblock}{What it does not establish}
-    State the strongest relevant exception or evidentiary boundary.
-  \end{alertblock}
-  \framesource{Paper Table X, Fig. Y, and Sec. Z}
-\end{frame}
-
-\section{Assessment}
-
-\begin{frame}{What remains brittle}
-  \small
-  \begin{columns}[T,onlytextwidth]
-    \begin{column}{0.47\textwidth}
-      \begin{block}{Method limits}
-        Assumptions, scope, and failure modes.
-      \end{block}
-    \end{column}
-    \begin{column}{0.49\textwidth}
-      \begin{block}{Evidence and reproducibility limits}
-        Dataset selection, missing uncertainty, unavailable code/data, or undisclosed settings.
-      \end{block}
-    \end{column}
-  \end{columns}
-  \framesource{Paper limitations and presenter assessment}
-\end{frame}
-
-\begin{frame}{Three takeaways for the audience}
-  \begin{enumerate}
-    \item One transferable representation or modeling lesson.
-    \item One evidence or evaluation lesson.
-    \item One open problem or deployment lesson.
-  \end{enumerate}
-  \begin{alertblock}{Discussion}
-    End with one question that follows from a documented limitation.
-  \end{alertblock}
-  \framesource{Presenter synthesis based on the paper}
-\end{frame}
-
-{
-\setbeamertemplate{footline}{}
-\setbeamertemplate{frametitle}{}
-\begin{frame}[t]
-  \mbzuaiThankYou
-\end{frame}
-}
-
-\end{document}
-"""
+from theme_source import (
+    DEFAULT_THEME_REF,
+    DEFAULT_THEME_REPO,
+    TEMPLATE_PATH,
+    install_theme,
+    resolve_theme,
+)
 
 
 SOURCES = """# Sources and provenance
@@ -252,9 +58,11 @@ List used and archived assets. Mark each as unchanged, cropped, annotated, re-ty
 
 ## Theme
 
-- Repository: https://github.com/MicDZ/MBZUAI_Beamer_Theme
-- Bundled commit: 061598c04f99f87a14172e239e3d0c54f96246a8
+- Repository/source: @@THEME_SOURCE@@
+- Requested ref: `@@THEME_REF@@`
+- Resolved commit: `@@THEME_COMMIT@@`
 - License: MIT; see `THEME_LICENSE`
+- Local provenance: `THEME_UPSTREAM.md`
 
 ## Scope of interpretation
 
@@ -267,15 +75,6 @@ def materialize(template: str, values: dict[str, str]) -> str:
     for key, value in values.items():
         result = result.replace(f"@@{key}@@", value)
     return result
-
-
-def copy_theme(theme: Path, output: Path) -> None:
-    for source in theme.glob("*.sty"):
-        shutil.copy2(source, output / source.name)
-    shutil.copytree(theme / "assets", output / "assets")
-    shutil.copy2(theme / "LICENSE", output / "THEME_LICENSE")
-    shutil.copy2(theme / "UPSTREAM.md", output / "THEME_UPSTREAM.md")
-    shutil.copy2(theme / "README.md", output / "THEME_README.md")
 
 
 def main() -> int:
@@ -307,25 +106,27 @@ def main() -> int:
         metavar=("LEFT", "CENTER", "RIGHT"),
         help="three LaTeX-safe footer fields confirmed by the user",
     )
+    cli.add_argument(
+        "--theme-repo",
+        default=DEFAULT_THEME_REPO,
+        help="MBZUAI theme Git repository",
+    )
+    cli.add_argument(
+        "--theme-ref",
+        default=DEFAULT_THEME_REF,
+        help="theme branch, tag, or reachable commit; defaults to main",
+    )
+    cli.add_argument(
+        "--theme-dir",
+        type=Path,
+        help="use a local theme checkout instead of fetching the repository",
+    )
     args = cli.parse_args()
 
     output = args.output.expanduser().resolve()
     if output.exists() and (not output.is_dir() or any(output.iterdir())):
         print(f"error: output directory is not empty: {output}", file=sys.stderr)
         return 2
-
-    skill_dir = Path(__file__).resolve().parent.parent
-    theme = skill_dir / "assets" / "MBZUAI_Beamer_Theme"
-    required = [
-        theme / "beamerthemeMBZUAI.sty",
-        theme / "assets",
-        theme / "UPSTREAM.md",
-        theme / "LICENSE",
-    ]
-    missing = [str(path) for path in required if not path.exists()]
-    if missing:
-        print("error: bundled theme is incomplete: " + ", ".join(missing), file=sys.stderr)
-        return 1
 
     short_title = args.short_title or args.title
     if args.confirm_default_footer:
@@ -335,27 +136,45 @@ def main() -> int:
     else:
         foot_left, foot_center, foot_right = args.footer
 
-    values = {
-        "TITLE": args.title,
-        "SHORT_TITLE": short_title,
-        "SUBTITLE": args.subtitle,
-        "AUTHORS": args.authors,
-        "PRESENTER": args.presenter,
-        "VENUE": args.venue,
-        "DATE": args.date,
-        "RETRIEVED": args.retrieved,
-        "FOOT_LEFT": foot_left,
-        "FOOT_CENTER": foot_center,
-        "FOOT_RIGHT": foot_right,
-    }
+    try:
+        with resolve_theme(
+            repository=args.theme_repo,
+            ref=args.theme_ref,
+            local_directory=args.theme_dir,
+        ) as snapshot:
+            main_template = (snapshot.path / TEMPLATE_PATH).read_text(encoding="utf-8")
+            values = {
+                "TITLE": args.title,
+                "SHORT_TITLE": short_title,
+                "SUBTITLE": args.subtitle,
+                "AUTHORS": args.authors,
+                "PRESENTER": args.presenter,
+                "VENUE": args.venue,
+                "DATE": args.date,
+                "RETRIEVED": args.retrieved,
+                "FOOT_LEFT": foot_left,
+                "FOOT_CENTER": foot_center,
+                "FOOT_RIGHT": foot_right,
+                "THEME_SOURCE": snapshot.source,
+                "THEME_REF": snapshot.requested_ref,
+                "THEME_COMMIT": snapshot.commit,
+            }
 
-    output.mkdir(parents=True, exist_ok=True)
-    copy_theme(theme, output)
-    for name in ("paper-source", "figures", "data", "build", "rendered"):
-        (output / name).mkdir()
-    (output / "main.tex").write_text(materialize(MAIN_TEX, values), encoding="utf-8")
-    (output / "SOURCES.md").write_text(materialize(SOURCES, values), encoding="utf-8")
-    print(f"Created MBZUAI Beamer paper-talk project: {output}")
+            output.mkdir(parents=True, exist_ok=True)
+            install_theme(snapshot, output)
+            for name in ("paper-source", "figures", "data", "build", "rendered"):
+                (output / name).mkdir()
+            (output / "main.tex").write_text(
+                materialize(main_template, values), encoding="utf-8"
+            )
+            (output / "SOURCES.md").write_text(
+                materialize(SOURCES, values), encoding="utf-8"
+            )
+            print(f"Created MBZUAI Beamer paper-talk project: {output}")
+            print(f"Theme commit: {snapshot.commit}")
+    except (OSError, RuntimeError) as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 1
     return 0
 
 

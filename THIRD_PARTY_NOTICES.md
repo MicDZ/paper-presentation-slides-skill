@@ -2,12 +2,12 @@
 
 ## MBZUAI Beamer Theme
 
-This repository bundles a pinned snapshot of the MBZUAI Beamer Theme:
+This skill retrieves the MBZUAI Beamer Theme when a slide project is initialized or explicitly refreshed:
 
 - Upstream repository: https://github.com/MicDZ/MBZUAI_Beamer_Theme
-- Bundled commit: `061598c04f99f87a14172e239e3d0c54f96246a8`
-- Location: `assets/MBZUAI_Beamer_Theme/`
-- License: MIT; see `assets/MBZUAI_Beamer_Theme/LICENSE`
-- Detailed provenance: `assets/MBZUAI_Beamer_Theme/UPSTREAM.md`
+- Default ref: `main`
+- License: MIT; see the upstream repository
+- Generated-project license copy: `THEME_LICENSE`
+- Generated-project provenance: `THEME_UPSTREAM.md`
 
-The upstream license and notices are preserved in the bundled directory. Names, logos, and brand assets may also be subject to their owners' trademark or brand-usage rules.
+The skill repository does not vendor the theme or its binary assets. Each generated project records the resolved upstream commit and preserves the upstream license and README. Names, logos, and brand assets may also be subject to their owners' trademark or brand-usage rules.
