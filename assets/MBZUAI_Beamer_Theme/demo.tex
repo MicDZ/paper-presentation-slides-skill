@@ -1,0 +1,159 @@
+% demo.tex
+% MBZUAI Beamer Theme — Demo Presentation
+% Compile: pdflatex demo.tex
+
+\documentclass[aspectratio=169, 11pt]{beamer}
+
+\usetheme{MBZUAI}
+
+\title[MBZUAI]{Your Presentation Title}
+\subtitle{Subtitle Here}
+    \author[Author Name]{Author Name \\ \texttt{author@mbzuai.ac.ae}}
+\institute[MBZUAI]{Mohamed bin Zayed University of Artificial Intelligence}
+\date{\today}
+
+% Title page logos (comma-separated list, supports multiple logos)
+\titlelogos{ assets/logo_dark.pdf, assets/logo_dark.pdf, assets/logo_dark.pdf}
+
+% Footer customization
+\footleft{Your Presentation Title}
+\footmid{Subtitle Here}
+\footright{\insertframenumber{} / \inserttotalframenumber}
+
+\begin{document}
+
+% ════════════════════════════════════════════════════════════════════════════
+% Title Slide
+% ════════════════════════════════════════════════════════════════════════════
+{
+\setbeamertemplate{footline}{}
+\setbeamertemplate{frametitle}{}
+\begin{frame}[t]
+\titlepage
+\end{frame}
+}
+
+% ════════════════════════════════════════════════════════════════════════════
+% Outline
+% ════════════════════════════════════════════════════════════════════════════
+{
+\setbeamertemplate{footline}{}
+\begin{frame}{Outline}
+    \vspace{2mm}
+    \tableofcontents
+\end{frame}
+}
+
+% ════════════════════════════════════════════════════════════════════════════
+% Section 1
+% ════════════════════════════════════════════════════════════════════════════
+\section{Introduction}
+
+\begin{frame}{Introduction}
+    \begin{itemize}
+        \item First point with MBZUAI branding
+        \item Second point
+        \item Third point
+    \end{itemize}
+\end{frame}
+
+\begin{frame}{Content with Blocks}
+    \begin{block}{Standard Block}
+        This is a standard block with MBZUAI branding.
+    \end{block}
+
+    \begin{alertblock}{Important Note}
+        Highlighted information goes here.
+    \end{alertblock}
+
+    \begin{exampleblock}{Example}
+        Example content with MBZUAI styling.
+    \end{exampleblock}
+\end{frame}
+
+% ════════════════════════════════════════════════════════════════════════════
+% Section 2
+% ════════════════════════════════════════════════════════════════════════════
+\section{Main Content}
+
+\begin{frame}{Two Column Layout}
+    \begin{columns}[T]
+        \begin{column}{0.45\textwidth}
+            \textcolor{mbzuai-navy}{\textbf{Left Column}}\\[2mm]
+            Content for the left side of the slide.
+        \end{column}
+        \hfill
+        \begin{column}{0.45\textwidth}
+            \textcolor{mbzuai-navy}{\textbf{Right Column}}\\[2mm]
+            Content for the right side of the slide.
+        \end{column}
+    \end{columns}
+\end{frame}
+
+\begin{frame}{Graphics and Images}
+    \begin{figure}[h]
+        \centering
+        % \includegraphics[width=0.8\textwidth]{path/to/image.png}
+        \caption{Figure caption}
+    \end{figure}
+\end{frame}
+
+\begin{frame}{TikZ Diagram Example}
+    \begin{center}
+        \begin{tikzpicture}[node distance=2.5cm]
+            \node[rectangle, draw=mbzuai-navy, fill=mbzuai-dark-navy, text=white,
+                  minimum width=2.5cm, minimum height=1cm, rounded corners=2pt] (A) {Node A};
+            \node[rectangle, draw=mbzuai-navy, fill=mbzuai-dark-navy, text=white,
+                  minimum width=2.5cm, minimum height=1cm, rounded corners=2pt, right of=A] (B) {Node B};
+            \draw[->, mbzuai-sand, thick] (A) -- (B);
+        \end{tikzpicture}
+    \end{center}
+\end{frame}
+
+% ════════════════════════════════════════════════════════════════════════════
+% Section 3
+% ════════════════════════════════════════════════════════════════════════════
+\section{Results}
+
+\begin{frame}{Table Example}
+    \begin{center}
+        \begin{tabular}{lcc}
+            \hline
+            \rowcolor{mbzuai-dark-navy}
+            \textcolor{white}{\textbf{Item}} & \textcolor{white}{\textbf{Value}} & \textcolor{white}{\textbf{Status}} \\
+            \hline
+            \rowcolor{mbzuai-light-gray}
+            Item 1 & 100 & Pass \\
+            Item 2 & 200 & Pass \\
+            \rowcolor{mbzuai-light-gray}
+            Item 3 & 150 & Fail \\
+            \hline
+        \end{tabular}
+    \end{center}
+\end{frame}
+
+% ════════════════════════════════════════════════════════════════════════════
+% Section 4
+% ════════════════════════════════════════════════════════════════════════════
+\section{Conclusion}
+
+\begin{frame}{Summary}
+    \begin{enumerate}
+        \item \textcolor{mbzuai-navy}{\textbf{Key Point 1}}: Description
+        \item \textcolor{mbzuai-navy}{\textbf{Key Point 2}}: Description
+        \item \textcolor{mbzuai-navy}{\textbf{Key Point 3}}: Description
+    \end{enumerate}
+\end{frame}
+
+% ════════════════════════════════════════════════════════════════════════════
+% Thank You Slide
+% ════════════════════════════════════════════════════════════════════════════
+{
+\setbeamertemplate{footline}{}
+\setbeamertemplate{frametitle}{}
+\begin{frame}[t]
+    \mbzuaiThankYou
+\end{frame}
+}
+
+\end{document}

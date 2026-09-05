@@ -1,0 +1,30 @@
+% make-banner-bg.tex
+% Generates the frametitle banner background (navy + subtle pattern)
+%
+% Usage: pdflatex make-banner-bg.tex
+%
+% Requires: MBZUAI_PATTERN_CROP 01_NAVY_CMYK.pdf in the same directory
+%           or adjust the path below.
+
+\documentclass[border=0pt]{standalone}
+\usepackage{tikz}
+\usepackage{graphicx}
+\definecolor{mbzuai-dark-navy}{HTML}{0C2945}
+
+% ── Configuration ──────────────────────────────────────────────────────────
+% Pattern file path (adjust if needed)
+\def\patternfile{MBZUAI_PATTERN_CROP 01_NAVY_CMYK.pdf}
+
+% Banner dimensions: 128mm x 11.64mm (3.3em at 11pt)
+\def\bannerwidth{128mm}
+\def\bannerheight{11.64mm}
+
+\begin{document}
+\begin{tikzpicture}
+    \clip (0,0) rectangle (\bannerwidth, \bannerheight);
+    \fill[mbzuai-dark-navy] (0,0) rectangle (\bannerwidth, \bannerheight);
+    \node[anchor=north west, inner sep=0, opacity=0.12]
+        at (0, \bannerheight)
+        {\includegraphics[width=\bannerwidth]{\patternfile}};
+\end{tikzpicture}
+\end{document}

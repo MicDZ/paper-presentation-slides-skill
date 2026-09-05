@@ -1,0 +1,98 @@
+% beamerinnerthemeMBZUAI.sty
+% MBZUAI Inner Theme: Title page, blocks, TOC
+% Based on MBZUAI Brand Guidelines (March 2026, V1)
+
+\mode<presentation>
+
+% ── Lengths for auto-scaling title ───────────────────────────────────────────
+\newlength{\mbzuaiTitleNat}
+
+% ── Title page logos (configurable via \titlelogos) ─────────────────────────
+\newcommand{\mbzuai@titlelogos}{}
+\newcommand{\titlelogos}[1]{\renewcommand{\mbzuai@titlelogos}{#1}}
+\newcommand{\mbzuai@makelogos}{%
+    \ifx\mbzuai@titlelogos\empty\else
+        \begin{center}%
+            \foreach \logo [count=\i] in \mbzuai@titlelogos {%
+                \ifnum\i>1\hspace{3mm}\fi
+                \includegraphics[height=12mm]{\logo}%
+            }%
+        \end{center}%
+    \fi
+}
+
+% ── TOC section style (diamond marker) ─────────────────────────────────────
+\setbeamertemplate{section in toc}{%
+    \leavevmode
+    \tikz[baseline]{\fill[mbzuai-navy] (0,0.15) -- ++(2mm,2mm) -- ++(2mm,-2mm) -- ++(-2mm,-2mm) -- cycle;}
+    \hspace{4mm}{\inserttocsection}\par\vspace{2mm}
+}
+
+% ── Title Page ──────────────────────────────────────────────────────────────
+\setbeamertemplate{title page}{%
+    \begin{tikzpicture}[remember picture, overlay]
+        % Pattern background — low opacity, behind content
+        \node[anchor=center, inner sep=0, opacity=0.06]
+            at (current page.center)
+            {\includegraphics[width=\paperwidth]{pattern-bg.pdf}};
+
+        % Top navy bar
+        \fill[mbzuai-dark-navy]
+            (current page.north west) rectangle +(\paperwidth, -28mm);
+
+        % Title (auto-scale: max \Large, shrink if too long)
+        \node[anchor=north west, mbzuai-white]
+            at ([yshift=-8mm, xshift=15mm]current page.north west)
+            {\settowidth{\mbzuaiTitleNat}{\Huge\bfseries\inserttitle}%
+             \ifdim\mbzuaiTitleNat>\dimexpr\paperwidth-30mm\relax
+                 \parbox[t]{\dimexpr\paperwidth-30mm\relax}{\raggedright\textcolor{mbzuai-white}{\Large\bfseries\inserttitle}}%
+             \else
+                 \textcolor{mbzuai-white}{\Huge\bfseries\inserttitle}%
+             \fi};
+
+        % Subtitle
+        \node[anchor=north west, mbzuai-sand, font=\large]
+            at ([yshift=-18mm, xshift=15mm]current page.north west)
+            {\insertsubtitle};
+    \end{tikzpicture}
+
+    \vspace{30mm}
+    % Adaptive layout: content fills available space
+    \begin{center}
+        \vfill
+        {\normalsize \textcolor{mbzuai-text}{\insertauthor}}\\[3mm]
+        {\small \textcolor{mbzuai-subtle}{\insertinstitute}}\\[3mm]
+        {\small \textcolor{mbzuai-subtle}{\insertdate}}
+        \vfill
+        \mbzuai@makelogos
+        \vskip 8mm
+    \end{center}
+}
+
+% ── Thank You Slide ────────────────────────────────────────────────────────
+% Usage: \begin{frame} \mbzuaiThankYou \end{frame}
+\newcommand{\mbzuaiThankYou}{%
+    \begin{tikzpicture}[remember picture, overlay]
+        % Pattern background — low opacity
+        \node[anchor=center, inner sep=0, opacity=0.06]
+            at (current page.center)
+            {\includegraphics[width=\paperwidth]{pattern-bg.pdf}};
+
+        % Top navy bar
+        \fill[mbzuai-dark-navy]
+            (current page.north west) rectangle +(\paperwidth, -12mm);
+    \end{tikzpicture}
+
+    \vspace{12mm}
+    \begin{center}
+        {\Huge \textcolor{mbzuai-dark-navy}{\textbf{Thank You}}}\\[6mm]
+        {\Large \textcolor{mbzuai-navy}{Questions?}}\\[8mm]
+        {\normalsize
+        \textcolor{mbzuai-subtle}{\insertauthor}\\[2mm]
+        \textcolor{mbzuai-subtle}{\insertinstitute}
+        }\\[6mm]
+        \mbzuai@makelogos
+    \end{center}
+}
+
+\mode<all>

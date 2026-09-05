@@ -1,0 +1,4 @@
+interface:
+  display_name: "Paper Presentation Slides"
+  short_description: "制作可复现、证据驱动的 MBZUAI Beamer 论文汇报"
+  default_prompt: "Use $paper-presentation-slides to turn this assigned paper into a source-grounded MBZUAI Beamer talk."
