@@ -23,6 +23,7 @@ THEME_FILES = (
     "beamerinnerthemeMBZUAI.sty",
     "beamerouterthemeMBZUAI.sty",
 )
+MANIFEST_FILE = "THEME_MANIFEST.txt"
 
 
 @dataclass(frozen=True)
@@ -115,16 +116,33 @@ def resolve_theme(
 def install_theme(snapshot: ThemeSnapshot, project: Path) -> None:
     """Install or refresh only theme-owned files in a slide project."""
 
+    manifest_path = project / MANIFEST_FILE
+    if manifest_path.is_file():
+        for value in manifest_path.read_text(encoding="utf-8").splitlines():
+            relative = Path(value)
+            if not value or relative.is_absolute() or ".." in relative.parts:
+                raise RuntimeError(f"invalid prior theme-manifest entry: {value!r}")
+            target = project / relative
+            if target.is_file() or target.is_symlink():
+                target.unlink()
+
+    installed: list[str] = []
     for name in THEME_FILES:
         shutil.copy2(snapshot.path / name, project / name)
-    shutil.copytree(
-        snapshot.path / "assets",
-        project / "assets",
-        dirs_exist_ok=True,
-        ignore=shutil.ignore_patterns("slides"),
-    )
+        installed.append(name)
+
+    for source in sorted((snapshot.path / "assets").rglob("*")):
+        relative_asset = source.relative_to(snapshot.path / "assets")
+        if "slides" in relative_asset.parts or not source.is_file():
+            continue
+        destination = project / "assets" / relative_asset
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(source, destination)
+        installed.append((Path("assets") / relative_asset).as_posix())
+
     shutil.copy2(snapshot.path / "LICENSE", project / "THEME_LICENSE")
     shutil.copy2(snapshot.path / "README.md", project / "THEME_README.md")
+    installed.extend(("THEME_LICENSE", "THEME_README.md"))
 
     retrieved = datetime.now(timezone.utc).replace(microsecond=0).isoformat()
     provenance = f"""# MBZUAI Beamer theme provenance
@@ -136,3 +154,4 @@ def install_theme(snapshot: ThemeSnapshot, project: Path) -> None:
 - License: MIT; see `THEME_LICENSE`
 """
     (project / "THEME_UPSTREAM.md").write_text(provenance, encoding="utf-8")
+    manifest_path.write_text("\n".join(installed) + "\n", encoding="utf-8")

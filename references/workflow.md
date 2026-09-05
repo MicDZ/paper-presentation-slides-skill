@@ -42,7 +42,7 @@ When the user requests or accepts a theme update, run:
 python3 <skill-dir>/scripts/sync_theme.py <project-directory> --yes
 ```
 
-The sync helper overwrites only theme-owned `.sty` files, theme assets, and theme provenance/license files. It does not change `main.tex`, paper figures, data, or sources. Pass `--theme-ref` to select a tag/commit, or `--theme-dir` for a local checkout. Recompile and perform the complete visual inspection after every refresh; a theme-only diff can still change layout.
+The sync helper uses `THEME_MANIFEST.txt` to replace or remove only previously installed theme-owned `.sty` files and theme assets, then refreshes the theme provenance/license files. It does not change `main.tex`, paper figures, data, sources, or unlisted custom assets. Pass `--theme-ref` to select a tag/commit, or `--theme-dir` for a local checkout. Recompile and perform the complete visual inspection after every refresh; a theme-only diff can still change layout.
 
 ## 2. Acquire the best evidence
 

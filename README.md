@@ -62,7 +62,7 @@ python3 scripts/sync_theme.py ./example-paper-slides --yes
 python3 scripts/build_slide_project.py ./example-paper-slides
 ```
 
-New projects follow the theme repository's `main` branch by default. Use `--theme-ref <tag-or-commit>` for a pinned version, or `--theme-dir <local-checkout>` for offline work and testing unpublished theme changes. Every generated project records the resolved commit in `THEME_UPSTREAM.md` and `SOURCES.md`.
+New projects follow the theme repository's `main` branch by default. Use `--theme-ref <tag-or-commit>` for a pinned version, or `--theme-dir <local-checkout>` for offline work and testing unpublished theme changes. Every generated project records the resolved commit in `THEME_UPSTREAM.md` and `SOURCES.md`; `THEME_MANIFEST.txt` lets later refreshes remove obsolete theme-owned files without deleting paper or custom assets.
 
 Use `--footer "Left" "Center" "Right"` instead of `--confirm-default-footer` when custom footer text has been confirmed.
 
