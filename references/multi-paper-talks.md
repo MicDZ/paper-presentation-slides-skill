@@ -11,7 +11,7 @@ Write one sentence for every transition: what assumption the previous paper leav
 ## Keep subdecks modular
 
 - Give each paper its own exact identity, source provenance, and self-contained claim/evidence boundary.
-- Reuse theme, footer, presenter naming, notation conventions, and source-locator style.
+- Reuse theme, footer, presenter naming, notation conventions, and source-locator style. A shared `talk-context.md` ([project-context.md](project-context.md)) keeps presenter, footer, and audience consistent across subdecks.
 - Avoid repeating generic motivation. Refer back to the shared session question and explain what changes.
 - Normalize terminology across papers only when meanings are genuinely compatible. Do not silently equate differently defined success rates, horizons, datasets, or action spaces.
 - If time is constrained, prioritize one thesis, one method mechanism, one decisive result, and one limitation per paper.
