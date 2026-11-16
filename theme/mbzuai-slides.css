@@ -1,0 +1,888 @@
+/* ==========================================================================
+   MBZUAI HTML Slides Theme
+   Based on MBZUAI Brand Guidelines (March 2026, V1)
+   HTML counterpart of the MBZUAI Beamer theme in this repository.
+
+   Every slide is a fixed 1280 x 720 canvas (16:9). The runtime script
+   (mbzuai-slides.js) scales it to the viewport, numbers equations, figures,
+   tables and theorems, resolves citations / cross-references, lays out
+   footnotes and renders math with KaTeX.  See html/AUTHORING.md.
+   ========================================================================== */
+
+@import url("https://fonts.googleapis.com/css2?family=Source+Sans+3:ital,wght@0,400;0,600;0,700;1,400;1,600&display=swap");
+
+:root {
+  /* Brand colors (same names as the Beamer theme) */
+  --mbz-dark-navy: #0C2945;
+  --mbz-navy: #154677;
+  --mbz-sand: #E5C687;
+  --mbz-dark-sand: #8A764D;
+  --mbz-white: #FFFFFF;
+  --mbz-light-gray: #F5F5F5;
+  --mbz-text: #1A1A1A;
+  --mbz-subtle: #666666;
+  --mbz-rule: #B9C2CC;
+  --mbz-alert: #A12A2A;
+
+  /* Canvas geometry */
+  --slide-w: 1280px;
+  --slide-h: 720px;
+  --header-h: 92px;
+  --header-rule: 3px;
+  --footer-h: 46px;
+  --pad-x: 64px;
+
+  /* Typography */
+  --font-sans: "Source Sans 3", "Source Sans Pro", "Helvetica Neue", Arial,
+    "PingFang SC", "Hiragino Sans GB", "Noto Sans SC", "Microsoft YaHei", sans-serif;
+  --font-serif: "KaTeX_Main", "Latin Modern Roman", "CMU Serif", "Times New Roman", serif;
+  --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+  --fs-base: 27px;
+  --lh-base: 1.38;
+
+  /* Viewer */
+  --viewer-bg: #1d232b;
+  --scale: 1;
+}
+
+/* ── Viewer chrome ───────────────────────────────────────────────────────── */
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--viewer-bg);
+}
+body { overflow: hidden; }
+
+.deck {
+  position: fixed;
+  inset: 0;
+}
+
+.deck > .slide {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  margin-left: calc(var(--slide-w) / -2);
+  margin-top: calc(var(--slide-h) / -2);
+  transform: scale(var(--scale));
+  transform-origin: center center;
+  display: none;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.35);
+}
+.deck > .slide.active { display: block; }
+
+/* Before the runtime has run, keep things invisible to avoid a flash of raw TeX */
+.deck:not(.mbz-ready) { visibility: hidden; }
+
+/* Overview mode (press "o") */
+body.mbz-overview { overflow: auto; }
+body.mbz-overview .deck {
+  position: static;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, 320px);
+  justify-content: center;
+  gap: 20px;
+  padding: 24px;
+}
+body.mbz-overview .deck > .slide {
+  display: block;
+  position: relative;
+  left: auto; top: auto;
+  margin: 0;
+  transform: none;
+  zoom: 0.25;
+  cursor: pointer;
+  outline: 12px solid transparent;
+}
+body.mbz-overview .deck > .slide.ov-current { outline-color: var(--mbz-sand); }
+
+/* Scroll / print mode (?print, or the browser print dialog) */
+body.mbz-print { overflow: auto; background: #888; }
+body.mbz-print .deck { position: static; }
+body.mbz-print .deck > .slide {
+  display: block;
+  position: relative;
+  left: auto; top: auto;
+  margin: 0 auto 24px;
+  transform: none;
+}
+body.mbz-print .fragment { opacity: 1 !important; visibility: visible !important; }
+
+@page { size: 1280px 720px; margin: 0; }
+@media print {
+  html, body { background: white !important; overflow: visible !important; }
+  .deck { position: static !important; display: block !important; padding: 0 !important; }
+  .deck > .slide {
+    display: block !important;
+    position: relative !important;
+    left: auto !important; top: auto !important;
+    margin: 0 !important;
+    transform: none !important;
+    box-shadow: none !important;
+    break-after: page;
+    page-break-after: always;
+  }
+  .fragment { opacity: 1 !important; visibility: visible !important; }
+  .slide.mbz-overflow::after { display: none !important; }
+  * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+}
+
+/* ── Slide canvas ────────────────────────────────────────────────────────── */
+.slide {
+  width: var(--slide-w);
+  height: var(--slide-h);
+  box-sizing: border-box;
+  overflow: hidden;
+  background: var(--mbz-white);
+  color: var(--mbz-text);
+  font-family: var(--font-sans);
+  font-size: var(--fs-base);
+  line-height: var(--lh-base);
+  font-kerning: normal;
+  font-variant-numeric: lining-nums;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+.slide *, .slide *::before, .slide *::after { box-sizing: border-box; }
+
+/* Speaker notes are never shown on the canvas */
+.slide aside.notes { display: none !important; }
+
+/* Header (frametitle banner) */
+.mbz-header {
+  position: absolute;
+  left: 0; top: 0;
+  width: 100%;
+  height: var(--header-h);
+  background: var(--mbz-dark-navy);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  padding: 0 calc(var(--pad-x) * 0.75) 0 calc(var(--pad-x) * 0.75);
+  gap: 24px;
+}
+.mbz-header::before,
+.mbz-footer::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: url("assets/pattern.svg");
+  background-size: 1400px auto;
+  background-position: 0 -40px;
+  background-repeat: repeat-x;
+  opacity: 0.14;
+  mix-blend-mode: screen;
+  pointer-events: none;
+}
+.mbz-footer::before { background-position: 0 -600px; opacity: 0.1; }
+.mbz-header::after {
+  content: "";
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  height: var(--header-rule);
+  background: var(--mbz-sand);
+}
+.mbz-header .frametitle {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  color: var(--mbz-white);
+  font-family: var(--font-sans);
+  font-weight: 400;
+  font-size: 40px;
+  line-height: 1.12;
+  letter-spacing: 0.002em;
+}
+.mbz-header .frametitle .framesubtitle {
+  display: block;
+  font-size: 0.55em;
+  color: var(--mbz-sand);
+  margin-top: 2px;
+}
+.mbz-header .frametitle .katex { color: inherit; }
+.mbz-logos {
+  position: relative;
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.mbz-logos img { display: block; }
+.mbz-header .mbz-logos img { height: 44px; width: auto; }
+.mbz-header .mbz-logos img.rcl { height: 40px; }
+.mbz-logos .sep {
+  width: 1px;
+  height: 38px;
+  background: var(--mbz-sand);
+  opacity: 0.9;
+}
+
+/* Footer */
+.mbz-footer {
+  position: absolute;
+  left: 0; bottom: 0;
+  width: 100%;
+  height: var(--footer-h);
+  background: var(--mbz-dark-navy);
+  color: var(--mbz-white);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  padding: 0 calc(var(--pad-x) * 1.2) 0 calc(var(--pad-x) * 0.75);
+  font-size: 17px;
+  line-height: 1;
+  white-space: nowrap;
+}
+.mbz-footer > * { position: relative; }
+.mbz-footer .foot-left { font-weight: 700; max-width: 55%; overflow: hidden; text-overflow: ellipsis; }
+.mbz-footer .foot-sep { color: var(--mbz-sand); margin: 0 18px; }
+.mbz-footer .foot-mid { overflow: hidden; text-overflow: ellipsis; }
+.mbz-footer .foot-right { margin-left: auto; padding-left: 24px; font-variant-numeric: tabular-nums; }
+
+/* Content area between header and footer */
+.mbz-content {
+  position: absolute;
+  left: 0; right: 0;
+  top: calc(var(--header-h) + var(--header-rule));
+  bottom: var(--footer-h);
+  padding: 22px var(--pad-x) 12px;
+  display: flex;
+  flex-direction: column;
+}
+.slide.no-header .mbz-content { top: 0; }
+.slide.no-footer .mbz-content { bottom: 0; }
+
+.mbz-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;            /* Beamer default: vertically centered */
+}
+.slide[data-align="top"] .mbz-body { justify-content: flex-start; }
+.slide[data-align="bottom"] .mbz-body { justify-content: flex-end; }
+.mbz-main { width: 100%; }
+.mbz-main > :first-child { margin-top: 0; }
+.mbz-main > :last-child { margin-bottom: 0; }
+.slide[data-fill] .mbz-main { height: 100%; display: flex; flex-direction: column; }
+
+/* Overflow marker (visible in ?debug mode, always reported in console) */
+body.mbz-debug .slide.mbz-overflow::after {
+  content: "OVERFLOW";
+  position: absolute;
+  right: 8px; top: 8px;
+  z-index: 50;
+  padding: 2px 8px;
+  font: 700 14px/1.4 var(--font-mono);
+  color: white;
+  background: #d00;
+}
+body.mbz-debug .slide.mbz-overflow { outline: 4px solid #d00; outline-offset: -4px; }
+
+/* ── Running text ────────────────────────────────────────────────────────── */
+.slide p { margin: 0 0 0.55em; }
+.slide strong, .slide b { font-weight: 700; }
+.slide em, .slide i { font-style: italic; }
+.slide a { color: var(--mbz-navy); text-decoration: none; }
+.slide a:hover { text-decoration: underline; }
+.slide code, .slide kbd, .slide samp { font-family: var(--font-mono); font-size: 0.86em; }
+.slide :not(pre) > code {
+  background: var(--mbz-light-gray);
+  border-radius: 3px;
+  padding: 0.05em 0.25em;
+}
+.slide pre {
+  margin: 0.4em 0 0.7em;
+  padding: 0.6em 0.8em;
+  background: var(--mbz-light-gray);
+  border-left: 4px solid var(--mbz-navy);
+  font-size: 0.7em;
+  line-height: 1.4;
+  overflow: hidden;
+  white-space: pre;
+}
+.slide h3 {
+  margin: 0 0 0.35em;
+  font-size: 1.08em;
+  font-weight: 700;
+  color: var(--mbz-dark-navy);
+}
+.slide h4 {
+  margin: 0 0 0.25em;
+  font-size: 1em;
+  font-weight: 700;
+  color: var(--mbz-navy);
+}
+.slide hr { border: 0; border-top: 1px solid var(--mbz-rule); margin: 0.6em 0; }
+
+/* Beamer-like semantic emphasis */
+.slide .strong, .slide .structure { color: var(--mbz-navy); font-weight: 700; }
+.slide .alert:not(.block) { color: var(--mbz-alert); }
+.slide .accent-text { color: var(--mbz-dark-sand); font-weight: 600; }
+.slide .muted { color: var(--mbz-subtle); }
+.slide mark, .slide .hl { background: rgba(229, 198, 135, 0.45); color: inherit; padding: 0 0.1em; }
+.slide sup:not(.fn-mark) { font-size: 0.62em; line-height: 0; }
+.slide .sc { font-variant: small-caps; letter-spacing: 0.02em; }
+
+/* LaTeX size commands */
+.slide .Huge { font-size: 2.07em; }
+.slide .huge { font-size: 1.73em; }
+.slide .LARGE { font-size: 1.44em; }
+.slide .Large { font-size: 1.2em; }
+.slide .large { font-size: 1.1em; }
+.slide .normalsize { font-size: 1em; }
+.slide .small { font-size: 0.9em; }
+.slide .footnotesize { font-size: 0.8em; }
+.slide .scriptsize { font-size: 0.7em; }
+.slide .tiny { font-size: 0.55em; }
+
+.slide .center, .slide .centering { text-align: center; }
+.slide .right { text-align: right; }
+.slide .justify { text-align: justify; hyphens: auto; }
+.slide .vfill { flex: 1 1 auto; }
+
+/* Lists — navy triangles like Beamer */
+.slide ul, .slide ol { margin: 0.2em 0 0.6em; padding-left: 1.45em; }
+.slide li { margin: 0.22em 0; }
+.slide li > ul, .slide li > ol { margin: 0.12em 0 0.2em; font-size: 0.92em; }
+.slide ul { list-style: none; }
+.slide ul > li { position: relative; }
+.slide ul > li::before {
+  content: "";
+  position: absolute;
+  left: -1.05em;
+  top: 0.42em;
+  width: 0; height: 0;
+  border-left: 0.5em solid var(--mbz-navy);
+  border-top: 0.29em solid transparent;
+  border-bottom: 0.29em solid transparent;
+}
+.slide ul ul > li::before {
+  top: 0.55em;
+  width: 0.34em; height: 0.34em;
+  border: 0;
+  border-radius: 50%;
+  background: var(--mbz-navy);
+}
+.slide ul ul ul > li::before { width: 0.5em; height: 0.08em; top: 0.68em; border-radius: 0; }
+.slide ol > li::marker { color: var(--mbz-navy); font-weight: 700; }
+.slide ul.plain > li::before { display: none; }
+.slide ul.plain { padding-left: 0; }
+.slide ul.check > li::before, .slide ul.cross > li::before {
+  border: 0; width: auto; height: auto; top: 0; left: -1.15em; font-weight: 700;
+}
+.slide ul.check > li::before { content: "✓"; color: var(--mbz-navy); }
+.slide ul.cross > li::before { content: "✗"; color: var(--mbz-alert); }
+
+/* Description lists */
+.slide dl { margin: 0.2em 0 0.6em; display: grid; grid-template-columns: max-content 1fr; column-gap: 0.8em; row-gap: 0.25em; }
+.slide dt { font-weight: 700; color: var(--mbz-navy); }
+.slide dd { margin: 0; }
+
+/* ── Columns ─────────────────────────────────────────────────────────────── */
+.slide .columns {
+  display: flex;
+  gap: var(--gap, 36px);
+  align-items: flex-start;
+  width: 100%;
+}
+.slide .columns.c { align-items: center; }
+.slide .columns.stretch { align-items: stretch; }
+.slide .columns > .column { flex: 1 1 0; min-width: 0; }
+.slide .columns > .column[style*="--w"] { flex: 0 1 var(--w); }
+.slide .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 24px 36px; }
+.slide .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px 28px; }
+
+/* ── Blocks (block / alertblock / exampleblock) ──────────────────────────── */
+.slide .block {
+  margin: 0 0 0.7em;
+  background: var(--mbz-light-gray);
+  font-size: 0.96em;
+}
+.slide .block > .block-title {
+  display: block;
+  padding: 0.18em 0.55em 0.16em;
+  background: var(--mbz-navy);
+  color: var(--mbz-white);
+  font-weight: 400;
+  font-size: 1.04em;
+}
+.slide .block > .block-body { display: block; padding: 0.42em 0.6em 0.48em; }
+.slide .block > .block-body > :last-child { margin-bottom: 0; }
+.slide .block.alert > .block-title { background: var(--mbz-dark-sand); }
+.slide .block.example > .block-title { background: var(--mbz-dark-navy); }
+.slide .block.plain { background: transparent; border-left: 4px solid var(--mbz-navy); }
+.slide .block.plain > .block-title { background: none; color: var(--mbz-navy); font-weight: 700; padding-bottom: 0; }
+.slide .block .katex-display { margin: 0.3em 0; }
+
+/* Key-takeaway callout */
+.slide .takeaway {
+  margin: 0.5em 0 0;
+  padding: 0.35em 0.7em;
+  border-left: 5px solid var(--mbz-sand);
+  background: rgba(229, 198, 135, 0.16);
+  font-size: 0.95em;
+}
+
+/* ── Theorem-like environments (amsthm style) ────────────────────────────── */
+.slide .theorem, .slide .lemma, .slide .proposition, .slide .corollary,
+.slide .conjecture, .slide .definition, .slide .assumption, .slide .remark,
+.slide .example-env, .slide .proof {
+  margin: 0.35em 0 0.7em;
+}
+.slide .theorem, .slide .lemma, .slide .proposition, .slide .corollary, .slide .conjecture {
+  font-style: italic;            /* amsthm "plain" style: italic body */
+}
+.slide .thm-head { font-style: normal; font-weight: 700; color: var(--mbz-dark-navy); }
+.slide .thm-head .thm-note { font-weight: 400; }
+.slide .remark .thm-head, .slide .example-env .thm-head { font-style: italic; font-weight: 400; color: var(--mbz-text); }
+.slide .theorem .katex, .slide .lemma .katex, .slide .proposition .katex,
+.slide .corollary .katex, .slide .conjecture .katex { font-style: normal; }
+.slide .boxed {
+  padding: 0.4em 0.7em;
+  border: 1px solid var(--mbz-navy);
+  border-left-width: 5px;
+}
+.slide .proof .proof-head { font-style: italic; }
+.slide .proof .qed { float: right; margin-left: 1em; }
+
+/* ── Mathematics ─────────────────────────────────────────────────────────── */
+.slide .katex { font-size: 1.08em; }
+.slide .katex-display { margin: 0.5em 0; }
+.slide .equation {
+  position: relative;
+  display: flex;
+  align-items: center;
+  margin: 0.5em 0;
+  min-height: 1.5em;
+}
+.slide .equation > .eq-body { flex: 1 1 auto; min-width: 0; text-align: center; }
+.slide .equation > .eq-body .katex-display { margin: 0; }
+.slide .equation > .eq-num {
+  flex: 0 0 auto;
+  padding-left: 1em;
+  font-family: var(--font-serif);
+  font-size: 1.02em;
+  color: var(--mbz-text);
+  white-space: nowrap;
+}
+.slide .equation.left > .eq-body .katex-display > .katex { text-align: left; }
+.slide .equation.boxed-eq > .eq-body {
+  border: 1px solid var(--mbz-rule);
+  background: var(--mbz-light-gray);
+  padding: 0.25em 0.6em;
+}
+.slide .katex-error { color: var(--mbz-alert); font-family: var(--font-mono); font-size: 0.7em; }
+
+/* Notation hover: symbols with a glossary entry (see AUTHORING.md §5a) */
+.slide .katex [data-mbz-sym] {
+  cursor: help;
+  border-radius: 0.12em;
+  transition: background-color 0.12s ease;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
+/* KaTeX draws radicals, wide accents and rules as overlays; let hovers pass through them */
+.slide .katex svg, .slide .katex .frac-line, .slide .katex .hide-tail,
+.slide .katex .overline-line, .slide .katex .underline-line { pointer-events: none; }
+.slide .katex [data-mbz-sym].mbz-sym-active { background: rgba(229, 198, 135, 0.38); }
+.slide .katex [data-mbz-sym].mbz-sym-hover { background: rgba(229, 198, 135, 0.8); }
+body.mbz-show-syms .slide .katex [data-mbz-sym]:not(.mbz-sym-active) {
+  background: rgba(21, 70, 119, 0.08);
+  box-shadow: inset 0 -0.08em 0 rgba(21, 70, 119, 0.55);
+}
+.mbz-tip {
+  position: fixed;
+  left: 0; top: 0;
+  z-index: 1000;
+  max-width: 480px;
+  padding: 0.45em 0.75em 0.55em;
+  background: var(--mbz-dark-navy);
+  color: var(--mbz-white);
+  border-left: 4px solid var(--mbz-sand);
+  border-radius: 4px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.32);
+  font-family: var(--font-sans);
+  font-size: 19px;
+  line-height: 1.38;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(4px);
+  transition: opacity 0.12s ease, transform 0.12s ease, visibility 0s linear 0.12s;
+}
+.mbz-tip.show { opacity: 1; visibility: visible; transform: none; transition-delay: 0s; }
+.mbz-tip-head { display: flex; align-items: baseline; gap: 0.7em; margin-bottom: 0.15em; }
+.mbz-tip-sym .katex { font-size: 1.3em; color: var(--mbz-sand); }
+.mbz-tip-type {
+  font-size: 0.72em;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.62);
+}
+.mbz-tip-body .katex { font-size: 1.05em; }
+.mbz-tip-body p { margin: 0; }
+.mbz-tip a { color: var(--mbz-sand); }
+@media print { .mbz-tip { display: none !important; } }
+
+/* Notation table that accompanies an equation */
+.slide table.notation td:first-child { white-space: nowrap; text-align: center; }
+
+/* ── Figures and tables (academic captions) ──────────────────────────────── */
+.slide figure { margin: 0.3em 0 0.6em; text-align: center; }
+.slide figure img, .slide figure svg, .slide figure video, .slide figure canvas {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  margin: 0 auto;
+}
+.slide figure img[style*="height"] { width: auto; }
+.slide figcaption {
+  margin: 0.35em auto 0;
+  max-width: 92%;
+  font-size: 0.68em;
+  line-height: 1.32;
+  color: var(--mbz-text);
+  text-align: center;
+}
+.slide figure.table > figcaption,
+.slide figure.algorithm > figcaption { margin: 0 auto 0.35em; }
+.slide figcaption .cap-label { font-weight: 700; color: var(--mbz-dark-navy); }
+.slide figcaption.left, .slide figure.left figcaption { text-align: left; max-width: none; }
+
+.slide .placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+  border: 2px dashed var(--mbz-rule);
+  color: var(--mbz-subtle);
+  font-size: 0.8em;
+  text-align: center;
+  padding: 1em;
+}
+
+/* Tables: booktabs by default */
+.slide table {
+  border-collapse: collapse;
+  margin: 0 auto;
+  font-size: 0.78em;
+  line-height: 1.3;
+  font-variant-numeric: tabular-nums lining-nums;
+  border-top: 2px solid var(--mbz-text);
+  border-bottom: 2px solid var(--mbz-text);
+}
+.slide th, .slide td { padding: 0.24em 0.65em; vertical-align: baseline; }
+.slide thead th, .slide thead td {
+  border-bottom: 1px solid var(--mbz-text);
+  font-weight: 700;
+  color: var(--mbz-dark-navy);
+}
+.slide tr.midrule > * { border-top: 1px solid var(--mbz-text); }
+.slide tr.group > * { border-top: 1px solid var(--mbz-rule); }
+.slide td.num, .slide th.num { text-align: right; }
+.slide td.c, .slide th.c { text-align: center; }
+.slide td.l, .slide th.l { text-align: left; }
+.slide td.best, .slide .best { font-weight: 700; }
+.slide td.second, .slide .second { text-decoration: underline; text-underline-offset: 0.15em; }
+.slide tr.ours > * { background: rgba(229, 198, 135, 0.22); }
+.slide table.compact th, .slide table.compact td { padding: 0.12em 0.45em; }
+.slide table.full { width: 100%; }
+/* Brand table (navy header, zebra rows) — matches the Beamer table slide */
+.slide table.brand { border-top: 0; border-bottom: 1px solid var(--mbz-subtle); }
+.slide table.brand thead th, .slide table.brand thead td {
+  background: var(--mbz-dark-navy);
+  color: var(--mbz-white);
+  border-bottom: 0;
+}
+.slide table.brand tbody tr:nth-child(even) > * { background: var(--mbz-light-gray); }
+
+/* ── Citations, cross-references, footnotes ──────────────────────────────── */
+.slide cite, .slide .cite { font-style: normal; color: var(--mbz-navy); white-space: nowrap; }
+.slide cite a, .slide .cite a { color: inherit; }
+.slide cite.mbz-missing, .slide a.ref.mbz-missing { color: var(--mbz-alert); font-weight: 700; }
+.slide a.ref, .slide a.eqref { color: var(--mbz-navy); white-space: nowrap; }
+
+.slide sup.fn-mark {
+  font-size: 0.62em;
+  line-height: 0;
+  vertical-align: super;
+  color: var(--mbz-navy);
+  margin-left: 0.04em;
+}
+
+/* Bottom zone: footnotes, then per-slide references, then source locator */
+.mbz-bottom {
+  flex: 0 0 auto;
+  margin-top: 10px;
+  font-size: 14.5px;
+  line-height: 1.32;
+  color: var(--mbz-text);
+}
+.mbz-bottom:empty { display: none; }
+.mbz-bottom.floating {
+  position: absolute;
+  left: var(--pad-x);
+  right: var(--pad-x);
+  bottom: 14px;
+  margin: 0;
+  z-index: 2;
+}
+.section-slide .mbz-bottom.floating { bottom: calc(var(--footer-h) + 12px); }
+.mbz-footnotes, .mbz-slide-refs {
+  position: relative;
+  padding-top: 6px;
+  margin: 0;
+  list-style: none;
+}
+.mbz-footnotes::before, .mbz-slide-refs:first-child::before {
+  content: "";
+  position: absolute;
+  left: 0; top: 0;
+  width: 30%;
+  border-top: 0.6px solid var(--mbz-text);   /* LaTeX \footnoterule */
+}
+.mbz-footnotes + .mbz-slide-refs { padding-top: 3px; }
+.mbz-footnotes li, .mbz-slide-refs li {
+  position: relative;
+  padding-left: 1.4em;
+  margin: 1px 0 0;
+}
+.mbz-footnotes li::before, .mbz-slide-refs li::before { display: none; }
+.mbz-footnotes .fn-num, .mbz-slide-refs .ref-num {
+  position: absolute;
+  left: 0;
+  width: 1.2em;
+  text-align: right;
+}
+.mbz-footnotes .fn-num { font-size: 0.75em; top: -0.25em; }
+.mbz-slide-refs { color: #333; }
+.mbz-slide-refs .ref-num { color: var(--mbz-navy); }
+.mbz-slide-refs.author-year li { padding-left: 0; }
+.mbz-bottom .katex { font-size: 1em; }
+
+/* Frame-level source locator (Beamer \framesource) */
+.slide .source {
+  margin: 6px 0 0;
+  text-align: right;
+  font-size: 13.5px;
+  line-height: 1.25;
+  color: var(--mbz-subtle);
+}
+.mbz-bottom .source { margin-top: 4px; }
+
+/* ── References slide ────────────────────────────────────────────────────── */
+.slide ol.bibliography {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 18px;
+  line-height: 1.34;
+}
+.slide ol.bibliography > li {
+  position: relative;
+  margin: 0 0 0.5em;
+  padding-left: 2.6em;
+}
+.slide ol.bibliography > li::before { display: none; }
+.slide ol.bibliography .bib-label {
+  position: absolute;
+  left: 0;
+  width: 2.2em;
+  text-align: right;
+  color: var(--mbz-navy);
+}
+.slide ol.bibliography.author-year > li { padding-left: 1.6em; text-indent: -1.6em; }
+.slide ol.bibliography.author-year .bib-label { display: none; }
+.slide .bib-title { }
+.slide .bib-venue { font-style: italic; }
+.slide .bib-link { font-family: var(--font-mono); font-size: 0.85em; word-break: break-all; }
+.slide.references .mbz-body { justify-content: flex-start; }
+
+/* ── Outline / table of contents (diamond markers) ───────────────────────── */
+.slide ol.toc {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-size: 1.1em;
+  counter-reset: toc;
+}
+.slide ol.toc > li {
+  position: relative;
+  margin: 0 0 0.55em;
+  padding-left: 1.6em;
+  color: var(--mbz-dark-navy);
+}
+.slide ol.toc > li::before {
+  content: "";
+  position: absolute;
+  left: 0.1em;
+  top: 0.38em;
+  width: 0.5em; height: 0.5em;
+  background: var(--mbz-navy);
+  transform: rotate(45deg);
+}
+.slide ol.toc > li.dim { color: #A8B0B9; }
+.slide ol.toc > li.dim::before { background: #C7CDD3; }
+.slide ol.toc > li.current { font-weight: 700; }
+.slide ol.toc > li.current::before { background: var(--mbz-sand); }
+
+/* ── Title slide ─────────────────────────────────────────────────────────── */
+.slide.title-slide, .slide.closing-slide, .slide.section-slide { position: relative; }
+.slide.title-slide::before, .slide.closing-slide::before, .slide.section-slide::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: url("assets/pattern.svg");
+  background-size: 1280px auto;
+  background-position: center 120px;
+  opacity: 0.06;
+  pointer-events: none;
+}
+.title-slide .mbz-title-bar {
+  position: absolute;
+  left: 0; top: 0; right: 0;
+  min-height: 224px;
+  padding: 58px 150px 30px;
+  background: var(--mbz-dark-navy);
+  color: var(--mbz-white);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.title-slide h1 {
+  margin: 0;
+  font-weight: 700;
+  font-size: 64px;
+  line-height: 1.08;
+  letter-spacing: 0.003em;
+  color: var(--mbz-white);
+}
+.title-slide .subtitle {
+  margin: 14px 0 0;
+  font-size: 30px;
+  line-height: 1.2;
+  color: var(--mbz-sand);
+}
+.title-slide .mbz-title-meta {
+  position: absolute;
+  left: 150px; right: 150px;
+  top: var(--title-bar-h, 224px);
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 20px 0 30px;
+  gap: 4px;
+}
+.title-slide .author, .title-slide .authors {
+  margin: 0;
+  font-size: 28px;
+  color: var(--mbz-text);
+}
+.title-slide .author sup, .title-slide .institute sup { font-size: 0.6em; }
+.title-slide .presenter { margin: 2px 0 0; font-size: 22px; color: var(--mbz-subtle); }
+.title-slide .presenter em { color: var(--mbz-text); }
+.title-slide .email, .title-slide .author code { font-family: var(--font-mono); font-size: 0.82em; }
+.title-slide .institute, .title-slide .venue {
+  margin: 14px 0 0;
+  font-size: 23px;
+  color: var(--mbz-subtle);
+}
+.title-slide .venue { margin-top: 6px; }
+.title-slide .date { margin: 12px 0 0; font-size: 23px; color: var(--mbz-subtle); }
+.title-slide .mbz-logos, .closing-slide .mbz-logos {
+  margin-top: auto;
+  justify-content: center;
+  gap: 22px;
+  padding-top: 18px;
+}
+.title-slide .mbz-logos img, .closing-slide .mbz-logos img { height: 70px; width: auto; }
+.title-slide .mbz-logos img.rcl, .closing-slide .mbz-logos img.rcl { height: 62px; }
+.title-slide .mbz-logos .sep, .closing-slide .mbz-logos .sep { background: var(--mbz-dark-navy); height: 54px; }
+.title-slide .mbz-title-meta > :first-child { margin-top: auto; }
+
+/* ── Closing (Thank You) slide ───────────────────────────────────────────── */
+.closing-slide .mbz-close-bar {
+  position: absolute;
+  left: 0; top: 0; right: 0;
+  height: 44px;
+  background: var(--mbz-dark-navy);
+}
+.closing-slide .mbz-close-body {
+  position: absolute;
+  inset: 44px 120px 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 30px 0 50px;
+}
+.closing-slide h1 {
+  margin: auto 0 0;
+  font-size: 72px;
+  line-height: 1.1;
+  font-weight: 700;
+  color: var(--mbz-dark-navy);
+}
+.closing-slide .subtitle { margin: 18px 0 30px; font-size: 36px; color: var(--mbz-navy); }
+.closing-slide .author, .closing-slide .institute, .closing-slide .contact {
+  margin: 4px 0 0;
+  font-size: 24px;
+  color: var(--mbz-subtle);
+}
+
+/* ── Section divider slide ───────────────────────────────────────────────── */
+.section-slide .mbz-section-body {
+  position: absolute;
+  inset: 0 0 var(--footer-h) 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 0 150px;
+}
+.section-slide .section-num {
+  font-size: 26px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--mbz-dark-sand);
+  font-weight: 600;
+}
+.section-slide h2.section-title {
+  margin: 8px 0 0;
+  font-size: 60px;
+  line-height: 1.1;
+  font-weight: 700;
+  color: var(--mbz-dark-navy);
+}
+.section-slide .section-rule {
+  width: 120px;
+  height: 5px;
+  background: var(--mbz-sand);
+  margin: 26px 0 22px;
+}
+.section-slide .section-lead { font-size: 28px; color: var(--mbz-subtle); max-width: 900px; }
+
+/* ── Fragments (incremental reveal, Beamer \pause) ───────────────────────── */
+.slide .fragment { transition: opacity 0.25s ease; }
+.slide .fragment:not(.visible) { opacity: 0; visibility: hidden; }
+.slide .fragment.dim-after.visible.past { opacity: 0.35; }
+
+/* ── Utilities ───────────────────────────────────────────────────────────── */
+.slide .mt-0 { margin-top: 0 !important; }
+.slide .mb-0 { margin-bottom: 0 !important; }
+.slide .mt-1 { margin-top: 0.5em !important; }
+.slide .mt-2 { margin-top: 1em !important; }
+.slide .mb-1 { margin-bottom: 0.5em !important; }
+.slide .mb-2 { margin-bottom: 1em !important; }
+.slide .w-100 { width: 100%; }
+.slide .nowrap { white-space: nowrap; }
+.slide .navy { color: var(--mbz-navy); }
+.slide .dark-navy { color: var(--mbz-dark-navy); }
+.slide .sand { color: var(--mbz-sand); }
+.slide .dark-sand { color: var(--mbz-dark-sand); }
+.slide .subtle { color: var(--mbz-subtle); }

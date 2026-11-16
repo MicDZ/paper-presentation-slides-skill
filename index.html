@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Attention Is All You Need</title>
+<!--
+  MBZUAI HTML paper-presentation deck (generated from the skill template).
+  Paper: arXiv:1706.03762v7 (2 Aug 2023). Provenance: SOURCES.md.
+  Authoring reference: theme/AUTHORING.md
+-->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+<link rel="stylesheet" href="theme/mbzuai-slides.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+<script defer src="theme/mbzuai-slides.js"></script>
+
+<script type="application/json" id="katex-macros">
+{
+  "\\R": "\\mathbb{R}"
+}
+</script>
+
+<style>
+  .fig-crop { position: relative; width: fit-content; margin: 0 auto; }
+  .fig-crop img { height: 500px; width: auto; display: block; }
+  .fig-crop svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .defs { margin: 0; padding: 0; list-style: none; }
+  .defs li { margin: 0.12em 0; }
+  .slide table.t3 th, .slide table.t3 td { padding: 0.06em 0.42em; }
+  .slide table.t3 td.sep, .slide table.t3 th.sep { border-left: 1px solid var(--mbz-rule); }
+  .tight p { margin: 0.35em 0; }
+</style>
+
+<!--
+  Notation hover glossary: Q&A aid only. Every symbol is ALSO defined on the slide
+  where it first appears. Tooltips do not appear in the PDF.
+-->
+<script type="application/json" id="notation">
+{
+  "h_t":            {"type": "vector", "meaning": "RNN hidden state at position $t$."},
+  "h_{t-1}":        {"type": "vector", "meaning": "RNN hidden state at the previous position."},
+  "x_t":            {"type": "vector", "meaning": "Input symbol representation at position $t$."},
+  "f":              {"type": "function", "meaning": "Recurrent cell (e.g. LSTM/GRU) applied at every step (presenter notation)."},
+  "n":              {"type": "scalar", "meaning": "Sequence length (number of positions)."},
+  "d":              {"type": "scalar", "meaning": "Representation dimension of a layer."},
+  "k":              {"type": "scalar", "meaning": "Convolution kernel size (Table 1)."},
+  "r":              {"type": "scalar", "meaning": "Neighborhood size of restricted self-attention."},
+  "O":              {"type": "operator", "meaning": "Asymptotic order (big-O)."},
+  "x_1":            {"type": "vector", "meaning": "First input symbol representation."},
+  "x_n":            {"type": "vector", "meaning": "Last ($n$-th) input symbol representation."},
+  "\\mathbf{z}":    {"type": "sequence", "meaning": "Encoder output: continuous representations $(z_1,\\dots,z_n)$."},
+  "z_1":            {"type": "vector", "meaning": "Encoder output at position 1."},
+  "z_n":            {"type": "vector", "meaning": "Encoder output at position $n$."},
+  "y_1":            {"type": "symbol", "meaning": "First output symbol."},
+  "y_m":            {"type": "symbol", "meaning": "Last ($m$-th) output symbol."},
+  "m":              {"type": "scalar", "meaning": "Output sequence length."},
+  "N":              {"type": "hyper-parameter", "meaning": "Number of identical layers per stack (6 in base)."},
+  "d_{\\text{model}}": {"type": "hyper-parameter", "meaning": "Width of every sub-layer output and embedding (512 base)."},
+  "PE":             {"type": "matrix", "meaning": "Fixed sinusoidal positional encoding, added to the embeddings."},
+  "pos":            {"type": "index", "meaning": "Token position in the sequence."},
+  "i":              {"type": "index", "meaning": "Dimension-pair index of the positional encoding, $0\\le 2i\\lt d_{\\text{model}}$."},
+  "Q":              {"type": "matrix", "meaning": "Queries packed row-wise, one $d_k$-dim row per query position."},
+  "K":              {"type": "matrix", "meaning": "Keys packed row-wise, one $d_k$-dim row per key position."},
+  "V":              {"type": "matrix", "meaning": "Values packed row-wise, one $d_v$-dim row per key position."},
+  "d_k":            {"type": "hyper-parameter", "meaning": "Query/key dimension (64 per head in base)."},
+  "d_v":            {"type": "hyper-parameter", "meaning": "Value dimension (64 per head in base)."},
+  "T":              {"type": "operator", "meaning": "Matrix transpose."},
+  "q":              {"type": "vector", "meaning": "One query vector (footnote argument)."},
+  "q_i":            {"type": "scalar", "meaning": "$i$-th component of $q$, assumed mean 0, variance 1."},
+  "k_i":            {"type": "scalar", "meaning": "$i$-th component of a key $k$, assumed mean 0, variance 1."},
+  "h":              {"type": "hyper-parameter", "meaning": "Number of attention heads (8 in base)."},
+  "W^O":            {"type": "matrix", "meaning": "Learned output projection, $W^O\\in\\R^{hd_v\\times d_{\\text{model}}}$."},
+  "W^Q_i":          {"type": "matrix", "meaning": "Learned query projection of head $i$, $\\R^{d_{\\text{model}}\\times d_k}$."},
+  "W^K_i":          {"type": "matrix", "meaning": "Learned key projection of head $i$, $\\R^{d_{\\text{model}}\\times d_k}$."},
+  "W^V_i":          {"type": "matrix", "meaning": "Learned value projection of head $i$, $\\R^{d_{\\text{model}}\\times d_v}$."},
+  "\\R":            {"type": "set", "meaning": "Real numbers; $\\R^{a\\times b}$ is the set of real $a\\times b$ matrices."},
+  "x":              {"type": "vector", "meaning": "Input to a sub-layer at one position, $x\\in\\R^{d_{\\text{model}}}$."},
+  "W_1":            {"type": "matrix", "meaning": "FFN first-layer weights, $\\R^{d_{\\text{model}}\\times d_{ff}}$."},
+  "b_1":            {"type": "vector", "meaning": "FFN first-layer bias, $\\R^{d_{ff}}$."},
+  "W_2":            {"type": "matrix", "meaning": "FFN second-layer weights, $\\R^{d_{ff}\\times d_{\\text{model}}}$."},
+  "b_2":            {"type": "vector", "meaning": "FFN second-layer bias, $\\R^{d_{\\text{model}}}$."},
+  "d_{ff}":         {"type": "hyper-parameter", "meaning": "FFN inner-layer width (2048 base)."},
+  "\\infty":        {"type": "constant", "meaning": "Mask value: softmax inputs of illegal (future) connections are set to $-\\infty$."},
+  "lrate":          {"type": "scalar", "meaning": "Adam learning rate at the current step."},
+  "step\\_num":     {"type": "index", "meaning": "Current training step (1, 2, ...)."},
+  "warmup\\_steps": {"type": "hyper-parameter", "meaning": "Length of the linear warm-up phase (4000)."},
+  "\\beta_1":       {"type": "hyper-parameter", "meaning": "Adam first-moment decay (0.9)."},
+  "\\beta_2":       {"type": "hyper-parameter", "meaning": "Adam second-moment decay (0.98)."},
+  "\\epsilon":      {"type": "hyper-parameter", "meaning": "Adam numerical-stability constant ($10^{-9}$)."},
+  "P_{drop}":       {"type": "hyper-parameter", "meaning": "Residual dropout rate (0.1 base)."},
+  "\\epsilon_{ls}": {"type": "hyper-parameter", "meaning": "Label-smoothing value (0.1 base)."},
+  "\\alpha":        {"type": "hyper-parameter", "meaning": "Beam-search length penalty (0.6 for translation)."}
+}
+</script>
+
+<script type="text/x-bibtex" id="bibliography">
+@inproceedings{sutskever14,
+  title={Sequence to Sequence Learning with Neural Networks}, author={Sutskever, Ilya and Vinyals, Oriol and Le, Quoc V.},
+  booktitle={Advances in Neural Information Processing Systems}, shortbooktitle={NIPS}, pages={3104--3112}, year={2014}}
+@article{bahdanau2014neural,
+  title={Neural Machine Translation by Jointly Learning to Align and Translate}, author={Bahdanau, Dzmitry and Cho, Kyunghyun and Bengio, Yoshua},
+  journal={CoRR}, volume={abs/1409.0473}, year={2014}}
+@article{cho2014learning,
+  title={Learning Phrase Representations using {RNN} Encoder-Decoder for Statistical Machine Translation}, author={Cho, Kyunghyun and van Merrienboer, Bart and Gulcehre, Caglar and Bougares, Fethi and Schwenk, Holger and Bengio, Yoshua},
+  journal={CoRR}, volume={abs/1406.1078}, year={2014}}
+@misc{NalBytenet2017,
+  title={Neural Machine Translation in Linear Time}, author={Kalchbrenner, Nal and Espeholt, Lasse and Simonyan, Karen and van den Oord, Aaron and Graves, Alex and Kavukcuoglu, Koray},
+  howpublished={arXiv preprint arXiv:1610.10099v2}, year={2017}}
+@article{DBLP:journals/corr/ZhouCWLX16,
+  title={Deep Recurrent Models with Fast-Forward Connections for Neural Machine Translation}, author={Zhou, Jie and Cao, Ying and Wang, Xuguang and Li, Peng and Xu, Wei},
+  journal={CoRR}, volume={abs/1606.04199}, year={2016}}
+@misc{wu2016google,
+  title={Google's Neural Machine Translation System: Bridging the Gap between Human and Machine Translation}, author={Wu, Yonghui and Schuster, Mike and Chen, Zhifeng and Le, Quoc V. and Norouzi, Mohammad and Macherey, Wolfgang and Krikun, Maxim and Cao, Yuan and Gao, Qin and Macherey, Klaus and others},
+  howpublished={arXiv preprint arXiv:1609.08144}, year={2016}}
+@misc{JonasFaceNet2017,
+  title={Convolutional Sequence to Sequence Learning}, author={Gehring, Jonas and Auli, Michael and Grangier, David and Yarats, Denis and Dauphin, Yann N.},
+  howpublished={arXiv preprint arXiv:1705.03122v2}, year={2017}}
+@misc{shazeer2017outrageously,
+  title={Outrageously Large Neural Networks: The Sparsely-Gated Mixture-of-Experts Layer}, author={Shazeer, Noam and Mirhoseini, Azalia and Maziarz, Krzysztof and Davis, Andy and Le, Quoc and Hinton, Geoffrey and Dean, Jeff},
+  howpublished={arXiv preprint arXiv:1701.06538}, year={2017}}
+@inproceedings{KVparse15,
+  title={Grammar as a Foreign Language}, author={{Vinyals {\&} Kaiser} and Koo and Petrov and Sutskever and Hinton},
+  booktitle={Advances in Neural Information Processing Systems}, shortbooktitle={NIPS}, year={2015}}
+@inproceedings{petrov-EtAl:2006:ACL,
+  title={Learning Accurate, Compact, and Interpretable Tree Annotation}, author={Petrov, Slav and Barrett, Leon and Thibaux, Romain and Klein, Dan},
+  booktitle={Proceedings of the 21st International Conference on Computational Linguistics and 44th Annual Meeting of the ACL}, shortbooktitle={COLING-ACL}, pages={433--440}, publisher={ACL}, month=jul, year={2006}}
+@inproceedings{zhu-EtAl:2013:ACL,
+  title={Fast and Accurate Shift-Reduce Constituent Parsing}, author={Zhu, Muhua and Zhang, Yue and Chen, Wenliang and Zhang, Min and Zhu, Jingbo},
+  booktitle={Proceedings of the 51st Annual Meeting of the ACL (Volume 1: Long Papers)}, shortbooktitle={ACL}, pages={434--443}, publisher={ACL}, month=aug, year={2013}}
+@inproceedings{dyer-rnng:16,
+  title={Recurrent Neural Network Grammars}, author={Dyer, Chris and Kuncoro, Adhiguna and Ballesteros, Miguel and Smith, Noah A.},
+  booktitle={Proc. of NAACL}, shortbooktitle={NAACL}, year={2016}}
+@inproceedings{huang-harper:2009:EMNLP,
+  title={Self-Training {PCFG} Grammars with Latent Annotations Across Languages}, author={Huang, Zhongqiang and Harper, Mary},
+  booktitle={Proceedings of the 2009 Conference on Empirical Methods in Natural Language Processing}, shortbooktitle={EMNLP}, pages={832--841}, publisher={ACL}, month=aug, year={2009}}
+@inproceedings{mcclosky-etAl:2006:NAACL,
+  title={Effective Self-Training for Parsing}, author={McClosky, David and Charniak, Eugene and Johnson, Mark},
+  booktitle={Proceedings of the Human Language Technology Conference of the NAACL, Main Conference}, shortbooktitle={HLT-NAACL}, pages={152--159}, publisher={ACL}, month=jun, year={2006}}
+@misc{multiseq2seq,
+  title={Multi-Task Sequence to Sequence Learning}, author={Luong, Minh-Thang and Le, Quoc V. and Sutskever, Ilya and Vinyals, Oriol and Kaiser, Lukasz},
+  howpublished={arXiv preprint arXiv:1511.06114}, year={2015}}
+@article{layernorm2016,
+  title={Layer Normalization}, author={Ba, Jimmy Lei and Kiros, Jamie Ryan and Hinton, Geoffrey E.},
+  journal={arXiv preprint arXiv:1607.06450}, year={2016}}
+@inproceedings{he2016deep,
+  title={Deep Residual Learning for Image Recognition}, author={He, Kaiming and Zhang, Xiangyu and Ren, Shaoqing and Sun, Jian},
+  booktitle={Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition}, shortbooktitle={CVPR}, pages={770--778}, year={2016}}
+@inproceedings{kingma2014adam,
+  title={Adam: A Method for Stochastic Optimization}, author={Kingma, Diederik and Ba, Jimmy},
+  booktitle={ICLR}, shortbooktitle={ICLR}, year={2015}}
+</script>
+</head>
+<body>
+
+<main class="deck"
+      data-short-title="Attention Is All You Need"
+      data-foot-left="Attention Is All You Need"
+      data-foot-mid="Session by &lt;em&gt;Presenter Name&lt;/em&gt;"
+      data-foot-right="{page} / {total}"
+      data-cite-style="numeric"
+      data-slide-refs="true">
+
+  <section class="slide title-slide" data-logos="mbzuai">
+    <h1>Attention Is All You Need</h1>
+    <p class="subtitle">ML reading group</p>
+    <p class="author">Paper by Ashish Vaswani, Noam Shazeer, Niki Parmar, Jakob Uszkoreit, Llion Jones, Aidan N. Gomez, Łukasz Kaiser, Illia Polosukhin</p>
+    <p class="presenter">Presented by <em>Presenter Name</em></p>
+    <p class="institute"></p>
+    <p class="date">arXiv:1706.03762v7 (2 Aug 2023)</p>
+  </section>
+
+  <!-- Background: the single background slide (seq2seq/RNN bottleneck) -->
+  <section class="slide" data-section="Question">
+    <h2>Background: RNNs compute one position at a time</h2>
+    <figure class="nonumber">
+      <svg viewBox="0 0 1000 250" style="width:82%;display:block;margin:0 auto" role="img" aria-label="Unrolled RNN encoder: each hidden state waits for the previous one">
+        <defs>
+          <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#154677"/></marker>
+          <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#A12A2A"/></marker>
+        </defs>
+        <g font-family="Source Sans 3, Arial, sans-serif" font-size="30" text-anchor="middle">
+          <g fill="#E8EEF5" stroke="#154677" stroke-width="3">
+            <rect x="40"  y="70" width="120" height="70" rx="10"/>
+            <rect x="230" y="70" width="120" height="70" rx="10"/>
+            <rect x="420" y="70" width="120" height="70" rx="10"/>
+            <rect x="680" y="70" width="120" height="70" rx="10"/>
+          </g>
+          <g fill="#0C2945" font-style="italic">
+            <text x="100" y="115">h<tspan font-size="20" dy="8">1</tspan></text>
+            <text x="290" y="115">h<tspan font-size="20" dy="8">2</tspan></text>
+            <text x="480" y="115">h<tspan font-size="20" dy="8">3</tspan></text>
+            <text x="740" y="115">h<tspan font-size="20" dy="8">n</tspan></text>
+            <text x="100" y="235">x<tspan font-size="20" dy="8">1</tspan></text>
+            <text x="290" y="235">x<tspan font-size="20" dy="8">2</tspan></text>
+            <text x="480" y="235">x<tspan font-size="20" dy="8">3</tspan></text>
+            <text x="740" y="235">x<tspan font-size="20" dy="8">n</tspan></text>
+          </g>
+          <text x="610" y="115" fill="#0C2945">…</text>
+          <g stroke="#154677" stroke-width="3" fill="none" marker-end="url(#ar)">
+            <line x1="160" y1="105" x2="226" y2="105"/>
+            <line x1="350" y1="105" x2="416" y2="105"/>
+            <line x1="540" y1="105" x2="580" y2="105"/>
+            <line x1="640" y1="105" x2="676" y2="105"/>
+            <line x1="100" y1="205" x2="100" y2="144"/>
+            <line x1="290" y1="205" x2="290" y2="144"/>
+            <line x1="480" y1="205" x2="480" y2="144"/>
+            <line x1="740" y1="205" x2="740" y2="144"/>
+          </g>
+          <path d="M100 62 C 100 30, 740 30, 740 62" fill="none" stroke="#A12A2A" stroke-width="3" stroke-dasharray="8 6" marker-end="url(#arr)"/>
+          <text x="420" y="22" font-size="24" fill="#A12A2A">signal from x₁ reaches hₙ only after n sequential steps</text>
+          <text x="900" y="115" font-size="24" fill="#0C2945">→ decoder</text>
+        </g>
+      </svg>
+    </figure>
+    <div class="equation nonumber">h_t = f(h_{t-1}, x_t)</div>
+    <p class="small center mb-0">$x_t$: input at position $t$; $h_t$: hidden state; $f$: the recurrent cell (LSTM/GRU); $n$: sequence length.</p>
+    <p class="small center mt-1">Seq2seq encoders/decoders <cite>sutskever14,cho2014learning</cite> and attention-based NMT <cite>bahdanau2014neural</cite> keep this chain: no parallelism within a sequence.</p>
+    <p class="source">Paper Sec. 1 (recurrence description); diagram and $f$ notation: presenter</p>
+  </section>
+
+  <!-- Thesis -->
+  <section class="slide" data-section="Question">
+    <h2>Thesis: self-attention shortens every path to O(1)</h2>
+    <figure class="table nonumber">
+      <table class="full">
+        <thead><tr><th class="l">Layer type</th><th>Complexity per layer</th><th>Sequential operations</th><th>Maximum path length</th></tr></thead>
+        <tbody>
+          <tr class="ours"><td class="l">Self-Attention</td><td class="c">$O(n^2 \cdot d)$</td><td class="c">$O(1)$</td><td class="c">$O(1)$</td></tr>
+          <tr><td class="l">Recurrent</td><td class="c">$O(n \cdot d^2)$</td><td class="c">$O(n)$</td><td class="c">$O(n)$</td></tr>
+          <tr><td class="l">Convolutional</td><td class="c">$O(k \cdot n \cdot d^2)$</td><td class="c">$O(1)$</td><td class="c">$O(log_k(n))$</td></tr>
+          <tr><td class="l">Self-Attention (restricted)</td><td class="c">$O(r \cdot n \cdot d)$</td><td class="c">$O(1)$</td><td class="c">$O(n/r)$</td></tr>
+        </tbody>
+      </table>
+    </figure>
+    <p class="small mb-0">$n$: sequence length; $d$: representation dimension; $k$: convolution kernel size; $r$: neighborhood size of restricted self-attention; $O(\cdot)$: asymptotic order.</p>
+    <p class="small mt-1">Self-attention is cheaper per layer than recurrence when $n \lt d$, typical for sentence-level word pieces. <span class="muted">Shaded row: presenter highlight, not paper emphasis.</span></p>
+    <p class="source">Paper Table 1 and Sec. 4</p>
+  </section>
+
+  <!-- Full architecture once -->
+  <section class="slide" data-section="Method">
+    <h2>The Transformer: an encoder–decoder with no recurrence</h2>
+    <div class="columns c">
+      <div class="column" style="--w:38%">
+        <img src="figures/transformer-architecture.png" style="max-height:500px;display:block;margin:0 auto" alt="The Transformer model architecture (Paper Fig. 1)">
+      </div>
+      <div class="column small tight">
+        <p><span class="strong">Encoder (left)</span> maps inputs $(x_1, ..., x_n)$ to continuous representations $\mathbf{z} = (z_1, ..., z_n)$.</p>
+        <p><span class="strong">Decoder (right)</span> reads $\mathbf{z}$ and emits $(y_1,...,y_m)$ one symbol at a time, feeding back what it has generated.</p>
+        <p>Each stack: $N=6$ identical layers; every sub-layer outputs $d_{\text{model}}=512$ dims.</p>
+        <p class="footnotesize muted">$n, m$: input/output lengths; $x_i$: input symbol representation; $z_i$: encoder output at position $i$; $y_j$: output symbol.</p>
+      </div>
+    </div>
+    <p class="source">Paper Fig. 1 and Sec. 3, 3.1</p>
+  </section>
+
+  <!-- Step 1: inputs -->
+  <section class="slide" data-section="Method">
+    <h2>Step 1: token embeddings plus sinusoidal positions</h2>
+    <div class="columns c">
+      <div class="column" style="--w:44%">
+        <img src="figures/arch-crop-inputs.png" style="width:100%;display:block" alt="Input stage of the Transformer: embeddings plus positional encodings (crop of Paper Fig. 1)">
+      </div>
+      <div class="column small">
+        <p class="mb-0"><span class="strong">Problem</span> attention is order-blind; without positions, a sentence is a bag of tokens.</p>
+        <div class="equation nonumber">\begin{aligned} PE_{(pos,2i)} &= sin(pos / 10000^{2i/d_{\text{model}}}) \\ PE_{(pos,2i+1)} &= cos(pos / 10000^{2i/d_{\text{model}}}) \end{aligned}</div>
+        <p class="footnotesize mt-0">$PE$: positional encoding, same width $d_{\text{model}}$ as the embedding, so the two are summed; $pos$: token position; $i$: dimension-pair index.</p>
+        <p class="mb-0"><span class="strong">How</span> each dimension is a sinusoid; wavelengths grow geometrically from $2\pi$ to $10000\cdot 2\pi$, so a fixed offset is a linear map.</p>
+        <p class="footnotesize muted mt-1">Embeddings are learned, scaled by $\sqrt{d_{\text{model}}}$, and share weights with the output projection.</p>
+      </div>
+    </div>
+    <p class="source">Cropped from Paper Fig. 1; Sec. 3.4, 3.5</p>
+  </section>
+
+  <!-- Step 2: scaled dot-product attention -->
+  <section class="slide" data-section="Method">
+    <h2>Step 2: attention is a softmax-weighted average</h2>
+    <script type="application/json" class="notation">
+    {"i": {"type": "index", "meaning": "Component index of the query/key vectors, $1\\le i\\le d_k$."}}
+    </script>
+    <div class="columns c">
+      <div class="column" style="--w:22%">
+        <img src="figures/scaled-dot-product-attention.png" style="max-height:470px;display:block;margin:0 auto" alt="Scaled Dot-Product Attention (Paper Fig. 2 left)">
+      </div>
+      <div class="column small">
+        <div class="equation boxed-eq nonumber" id="eq:attn">\mathrm{Attention}(Q, K, V) = \mathrm{softmax}(\frac{QK^T}{\sqrt{d_k}})V</div>
+        <ul class="defs footnotesize">
+          <li>$Q$: queries, one row per position asking “what do I need?”, each of dimension $d_k$;</li>
+          <li>$K$: keys, one per position, also dimension $d_k$; $V$: values (dimension $d_v$) that get mixed;</li>
+          <li>$K^T$: transpose of $K$; $\mathrm{softmax}$ runs over keys, so each query's weights sum to 1.</li>
+        </ul>
+        <p class="mb-0"><span class="strong">Why scale?</span> If components $q_i, k_i$ of a query $q$ and key $k$ have mean 0 and variance 1, then $q \cdot k = \sum_{i=1}^{d_k} q_ik_i$ has variance $d_k$; large logits saturate the softmax and shrink gradients.</p>
+        <p class="footnotesize muted mt-1">Same as dot-product attention except for $\frac{1}{\sqrt{d_k}}$; faster than additive attention <cite>bahdanau2014neural</cite> because it is pure matrix multiplication.</p>
+      </div>
+    </div>
+    <p class="source">Paper Fig. 2 (left), Eq. 1, Sec. 3.2.1 and footnote 4</p>
+  </section>
+
+  <!-- Step 3: multi-head attention -->
+  <section class="slide" data-section="Method">
+    <h2>Step 3: <em>h</em> heads attend in parallel subspaces</h2>
+    <script type="application/json" class="notation">
+    {"i": {"type": "index", "meaning": "Head index, $1\\le i\\le h$."}}
+    </script>
+    <div class="columns c">
+      <div class="column" style="--w:30%">
+        <img src="figures/multi-head-attention.png" style="max-height:460px;display:block;margin:0 auto" alt="Multi-Head Attention (Paper Fig. 2 right)">
+      </div>
+      <div class="column small">
+        <div class="equation nonumber" id="eq:mha">\begin{aligned} \mathrm{MultiHead}(Q, K, V) &= \mathrm{Concat}(\mathrm{head_1}, ..., \mathrm{head_h})W^O \\ \text{where}~\mathrm{head_i} &= \mathrm{Attention}(QW^Q_i, KW^K_i, VW^V_i) \end{aligned}</div>
+        <ul class="defs footnotesize">
+          <li>$h$: number of heads; $i$: head index; $\mathrm{head_i}$: output of head $i$;</li>
+          <li>$W^Q_i, W^K_i \in \R^{d_{\text{model}} \times d_k}$, $W^V_i \in \R^{d_{\text{model}} \times d_v}$: learned per-head projections ($\R$: real numbers);</li>
+          <li>$\mathrm{Concat}$: stack head outputs side by side; $W^O \in \R^{hd_v \times d_{\text{model}}}$: learned output projection.</li>
+        </ul>
+        <p class="mb-0"><span class="strong">Why</span> one head averages everything into one distribution; several heads can look at different positions for different reasons.</p>
+        <p class="mt-1"><span class="strong">Setting</span> $h=8$, $d_k=d_v=d_{\text{model}}/h=64$: total cost ≈ one full-width head.</p>
+      </div>
+    </div>
+    <p class="source">Paper Fig. 2 (right), Sec. 3.2.2</p>
+  </section>
+
+  <!-- Step 4: encoder layer -->
+  <section class="slide" data-section="Method">
+    <h2>Step 4: encoder layer = self-attention, then a per-token MLP</h2>
+    <div class="columns c">
+      <div class="column" style="--w:32%">
+        <img src="figures/arch-crop-encoder.png" style="max-height:420px;display:block;margin:0 auto" alt="Encoder layer (crop of Paper Fig. 1)">
+      </div>
+      <div class="column small">
+        <p class="mb-0"><span class="strong">Self-attention</span>: $Q$, $K$, $V$ all come from the previous encoder layer, so every position sees every position.</p>
+        <p class="mb-0 mt-1"><span class="strong">Add &amp; Norm</span> around each sub-layer (residual <cite>he2016deep</cite> + layer norm <cite>layernorm2016</cite>):</p>
+        <div class="equation nonumber">\mathrm{LayerNorm}(x + \mathrm{Sublayer}(x))</div>
+        <p class="mb-0"><span class="strong">Feed-forward</span>, same weights at every position:</p>
+        <div class="equation nonumber" id="eq:ffn">\mathrm{FFN}(x)=\max(0, xW_1 + b_1) W_2 + b_2</div>
+        <p class="footnotesize mt-0">$x$: one position's input to the sub-layer; $\mathrm{Sublayer}$: the attention or FFN it wraps; $W_1, b_1$ / $W_2, b_2$: weights and biases of the two linear maps, inner width $d_{ff}=2048$; $\max(0,\cdot)$: ReLU.</p>
+      </div>
+    </div>
+    <p class="source">Cropped from Paper Fig. 1; Sec. 3.1, 3.2.3, 3.3</p>
+  </section>
+
+  <!-- Step 5: decoder -->
+  <section class="slide" data-section="Method">
+    <h2>Step 5: the decoder masks the future, then reads the encoder</h2>
+    <script type="application/json" class="notation">
+    {"i": {"type": "index", "meaning": "Output position index in the decoder."}}
+    </script>
+    <div class="columns c">
+      <div class="column" style="--w:26%">
+        <img src="figures/arch-crop-decoder.png" style="max-height:500px;display:block;margin:0 auto" alt="Decoder layer and output head (crop of Paper Fig. 1)">
+      </div>
+      <div class="column small">
+        <p><span class="strong">Masked self-attention</span>: inputs are the outputs shifted right; softmax inputs for future positions are set to $-\infty$, so position $i$ only sees outputs before $i$.</p>
+        <p><span class="strong">Encoder–decoder attention</span>: $Q$ from the decoder, $K$ and $V$ from the encoder output $\mathbf{z}$; every output position can look at every input position.</p>
+        <p><span class="strong">Output</span>: FFN, then Linear + Softmax give next-token probabilities; generation repeats auto-regressively.</p>
+      </div>
+    </div>
+    <p class="source">Cropped from Paper Fig. 1; Sec. 3.1, 3.2.3, 3.4</p>
+  </section>
+
+  <!-- Evidence -->
+  <section class="slide" data-section="Evidence">
+    <h2>Training: Adam with warm-up, then inverse-sqrt decay</h2>
+    <div class="columns c">
+      <div class="column" style="--w:50%">
+        <img src="figures/lr-schedule.png" style="width:100%;display:block" alt="Learning-rate schedule from Paper Eq. 3, base model">
+        <p class="scriptsize muted center mt-0">Plotted from Eq. 3 with $d_{\text{model}}=512$, $warmup\_steps=4000$ (presenter-generated)</p>
+      </div>
+      <div class="column small">
+        <div class="equation nonumber" id="eq:lr" style="font-size:0.88em">\begin{aligned} lrate = d_{\text{model}}^{-0.5} \cdot \min(&{step\_num}^{-0.5}, \\ &{step\_num} \cdot {warmup\_steps}^{-1.5}) \end{aligned}</div>
+        <p class="footnotesize mt-0">$lrate$: learning rate; $step\_num$: current step; $warmup\_steps$: linear warm-up length (4000).</p>
+        <ul class="footnotesize">
+          <li>Adam <cite>kingma2014adam</cite>: $\beta_1=0.9$, $\beta_2=0.98$ (moment decays), $\epsilon=10^{-9}$ (stability constant).</li>
+          <li>Residual dropout $P_{drop}=0.1$; label smoothing $\epsilon_{ls}=0.1$ (hurts perplexity, helps BLEU).</li>
+          <li>8 × P100: base 100K steps (12 h); big 300K steps (3.5 days).</li>
+        </ul>
+      </div>
+    </div>
+    <p class="source">Paper Eq. 3, Sec. 5.2–5.4</p>
+  </section>
+
+  <section class="slide" data-section="Evidence">
+    <h2>What the experiments measure</h2>
+    <figure class="table nonumber">
+      <table class="full footnotesize">
+        <thead><tr><th class="l">Experiment</th><th class="l">Training data</th><th class="l">Evaluated on</th><th class="l">Metric</th></tr></thead>
+        <tbody>
+          <tr><td class="l">WMT14 EN→DE</td><td class="l">4.5M sentence pairs, shared BPE vocab ≈37K</td><td class="l">newstest2014</td><td class="l">BLEU ↑</td></tr>
+          <tr><td class="l">WMT14 EN→FR</td><td class="l">36M sentences, 32K word-piece vocab</td><td class="l">newstest2014</td><td class="l">BLEU ↑</td></tr>
+          <tr><td class="l">Model variations</td><td class="l">EN→DE, one factor of the base model changed</td><td class="l">newstest2013 (dev)</td><td class="l">PPL ↓, BLEU ↑</td></tr>
+          <tr><td class="l">Constituency parsing</td><td class="l">WSJ ≈40K sentences; semi-sup. ≈17M</td><td class="l">WSJ Section 23</td><td class="l">F1 ↑</td></tr>
+        </tbody>
+      </table>
+    </figure>
+    <ul class="footnotesize">
+      <li><span class="strong">BLEU</span>: n-gram overlap with reference translations. <span class="strong">PPL</span>: per-wordpiece perplexity, not comparable to per-word PPL.</li>
+      <li><span class="strong">Training cost</span>: FLOPs <em>estimated</em> as training time × #GPUs × assumed sustained TFLOPS per GPU.</li>
+      <li>Translation decoding: beam 4, length penalty $\alpha=0.6$ ($\alpha$: favors longer outputs), checkpoint averaging; the dev-set variations use no averaging.</li>
+    </ul>
+    <p class="source">Paper Sec. 5.1, 6.1–6.3, footnote 5, Table 3 caption</p>
+  </section>
+
+  <section class="slide" data-section="Evidence" data-slide-refs="false">
+    <h2>Base model beats all prior EN→DE scores at the lowest cost</h2>
+    <figure class="table nonumber">
+      <table class="compact footnotesize">
+        <thead>
+          <tr><th class="l" rowspan="2">Model</th><th colspan="2">BLEU ↑</th><th colspan="2">Training cost (FLOPs) ↓</th></tr>
+          <tr><th>EN-DE</th><th>EN-FR</th><th>EN-DE</th><th>EN-FR</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="l">ByteNet <cite>NalBytenet2017</cite></td><td class="num">23.75</td><td></td><td></td><td></td></tr>
+          <tr><td class="l">Deep-Att + PosUnk <cite>DBLP:journals/corr/ZhouCWLX16</cite></td><td></td><td class="num">39.2</td><td></td><td class="num">$1.0\cdot10^{20}$</td></tr>
+          <tr><td class="l">GNMT + RL <cite>wu2016google</cite></td><td class="num">24.6</td><td class="num">39.92</td><td class="num">$2.3\cdot10^{19}$</td><td class="num">$1.4\cdot10^{20}$</td></tr>
+          <tr><td class="l">ConvS2S <cite>JonasFaceNet2017</cite></td><td class="num">25.16</td><td class="num">40.46</td><td class="num">$9.6\cdot10^{18}$</td><td class="num">$1.5\cdot10^{20}$</td></tr>
+          <tr><td class="l">MoE <cite>shazeer2017outrageously</cite></td><td class="num">26.03</td><td class="num">40.56</td><td class="num">$2.0\cdot10^{19}$</td><td class="num">$1.2\cdot10^{20}$</td></tr>
+          <tr class="midrule"><td class="l">Deep-Att + PosUnk Ensemble <cite>DBLP:journals/corr/ZhouCWLX16</cite></td><td></td><td class="num">40.4</td><td></td><td class="num">$8.0\cdot10^{20}$</td></tr>
+          <tr><td class="l">GNMT + RL Ensemble <cite>wu2016google</cite></td><td class="num">26.30</td><td class="num">41.16</td><td class="num">$1.8\cdot10^{20}$</td><td class="num">$1.1\cdot10^{21}$</td></tr>
+          <tr><td class="l">ConvS2S Ensemble <cite>JonasFaceNet2017</cite></td><td class="num">26.36</td><td class="num best">41.29</td><td class="num">$7.7\cdot10^{19}$</td><td class="num">$1.2\cdot10^{21}$</td></tr>
+          <tr class="midrule ours"><td class="l">Transformer (base model)</td><td class="num">27.3</td><td class="num">38.1</td><td class="c best" colspan="2">$\boldsymbol{3.3\cdot10^{18}}$</td></tr>
+          <tr class="ours"><td class="l">Transformer (big)</td><td class="num best">28.4</td><td class="num best">41.8</td><td class="c" colspan="2">$2.3\cdot10^{19}$</td></tr>
+        </tbody>
+      </table>
+    </figure>
+    <p class="scriptsize muted center mb-0">Bold exactly as in the paper (v7 bolds both 41.29 and 41.8). Shaded rows: presenter highlight. Blank: not reported.</p>
+    <p class="scriptsize center mt-0"><span class="alert">Read with care:</span> Sec. 6.1 text states 41.0 EN-FR BLEU for the big model, Table 2 lists 41.8. FLOPs are estimates (time × GPUs × assumed TFLOPS).</p>
+    <p class="source">Paper Table 2, Sec. 6.1, footnote 5; cited baselines listed under References</p>
+  </section>
+
+  <section class="slide" data-section="Evidence">
+    <h2>Head count matters; shrinking the key size hurts</h2>
+    <figure class="table nonumber">
+      <table class="t3 small">
+        <thead>
+          <tr><th></th><th class="sep">$N$</th><th>$d_{\text{model}}$</th><th>$d_{ff}$</th><th>$h$</th><th>$d_k$</th><th>$d_v$</th><th>$P_{drop}$</th><th>$\epsilon_{ls}$</th><th>train steps</th><th class="sep">PPL (dev) ↓</th><th>BLEU (dev) ↑</th><th>params ×10⁶</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="c">base</td><td class="c sep">6</td><td class="c">512</td><td class="c">2048</td><td class="c">8</td><td class="c">64</td><td class="c">64</td><td class="c">0.1</td><td class="c">0.1</td><td class="c">100K</td><td class="num sep">4.92</td><td class="num">25.8</td><td class="num">65</td></tr>
+          <tr class="midrule"><td class="c" rowspan="4">(A)</td><td class="sep"></td><td></td><td></td><td class="c">1</td><td class="c">512</td><td class="c">512</td><td></td><td></td><td></td><td class="num sep">5.29</td><td class="num">24.9</td><td></td></tr>
+          <tr><td class="sep"></td><td></td><td></td><td class="c">4</td><td class="c">128</td><td class="c">128</td><td></td><td></td><td></td><td class="num sep">5.00</td><td class="num">25.5</td><td></td></tr>
+          <tr><td class="sep"></td><td></td><td></td><td class="c">16</td><td class="c">32</td><td class="c">32</td><td></td><td></td><td></td><td class="num sep">4.91</td><td class="num">25.8</td><td></td></tr>
+          <tr><td class="sep"></td><td></td><td></td><td class="c">32</td><td class="c">16</td><td class="c">16</td><td></td><td></td><td></td><td class="num sep">5.01</td><td class="num">25.4</td><td></td></tr>
+          <tr class="midrule"><td class="c" rowspan="2">(B)</td><td class="sep"></td><td></td><td></td><td></td><td class="c">16</td><td></td><td></td><td></td><td></td><td class="num sep">5.16</td><td class="num">25.1</td><td class="num">58</td></tr>
+          <tr><td class="sep"></td><td></td><td></td><td></td><td class="c">32</td><td></td><td></td><td></td><td></td><td class="num sep">5.01</td><td class="num">25.4</td><td class="num">60</td></tr>
+        </tbody>
+      </table>
+    </figure>
+    <p class="footnotesize mb-0">(A) varies $h$ at constant compute: one head is 0.9 BLEU below the best; 32 heads also drop. (B) smaller $d_k$ alone lowers BLEU. Blank = base value.</p>
+    <p class="scriptsize muted mt-1">Table 3, rows base–(B); remaining rows on separate slides. EN→DE dev set, no checkpoint averaging. Paper bold (best PPL 4.33, BLEU 26.4) is in the big row. $N$: layers; $h$: heads; $d_k, d_v$: key/value dims; $P_{drop}$: dropout; $\epsilon_{ls}$: label smoothing.</p>
+    <p class="source">Paper Table 3 (base, A, B) and Sec. 6.2</p>
+  </section>
+
+  <section class="slide" data-section="Evidence">
+    <h2>Bigger models are better: more layers, width, FFN</h2>
+    <figure class="table nonumber">
+      <table class="t3 small">
+        <thead>
+          <tr><th></th><th class="sep">$N$</th><th>$d_{\text{model}}$</th><th>$d_{ff}$</th><th>$h$</th><th>$d_k$</th><th>$d_v$</th><th>$P_{drop}$</th><th>$\epsilon_{ls}$</th><th>train steps</th><th class="sep">PPL (dev) ↓</th><th>BLEU (dev) ↑</th><th>params ×10⁶</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="c">base</td><td class="c sep">6</td><td class="c">512</td><td class="c">2048</td><td class="c">8</td><td class="c">64</td><td class="c">64</td><td class="c">0.1</td><td class="c">0.1</td><td class="c">100K</td><td class="num sep">4.92</td><td class="num">25.8</td><td class="num">65</td></tr>
+          <tr class="midrule"><td class="c" rowspan="7">(C)</td><td class="c sep">2</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td class="num sep">6.11</td><td class="num">23.7</td><td class="num">36</td></tr>
+          <tr><td class="c sep">4</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td class="num sep">5.19</td><td class="num">25.3</td><td class="num">50</td></tr>
+          <tr><td class="c sep">8</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td class="num sep">4.88</td><td class="num">25.5</td><td class="num">80</td></tr>
+          <tr><td class="sep"></td><td class="c">256</td><td></td><td></td><td class="c">32</td><td class="c">32</td><td></td><td></td><td></td><td class="num sep">5.75</td><td class="num">24.5</td><td class="num">28</td></tr>
+          <tr><td class="sep"></td><td class="c">1024</td><td></td><td></td><td class="c">128</td><td class="c">128</td><td></td><td></td><td></td><td class="num sep">4.66</td><td class="num">26.0</td><td class="num">168</td></tr>
+          <tr><td class="sep"></td><td></td><td class="c">1024</td><td></td><td></td><td></td><td></td><td></td><td></td><td class="num sep">5.12</td><td class="num">25.4</td><td class="num">53</td></tr>
+          <tr><td class="sep"></td><td></td><td class="c">4096</td><td></td><td></td><td></td><td></td><td></td><td></td><td class="num sep">4.75</td><td class="num">26.2</td><td class="num">90</td></tr>
+        </tbody>
+      </table>
+    </figure>
+    <p class="footnotesize mb-0">(C) one size factor at a time: $N=2$ loses 2.1 BLEU; $d_{\text{model}}=1024$ and $d_{ff}=4096$ reach 26.0 and 26.2, at 2.6× and 1.4× the parameters.</p>
+    <p class="scriptsize muted mt-1">Table 3, rows base and (C). Blank = base value. EN→DE dev set; single runs, no variance reported. $N$: layers; $d_{\text{model}}$: model width; $d_{ff}$: FFN inner width.</p>
+    <p class="source">Paper Table 3 (base, C) and Sec. 6.2; parameter ratios derived (168/65, 90/65)</p>
+  </section>
+
+  <section class="slide" data-section="Evidence">
+    <h2>Dropout helps; learned positions ≈ sinusoids</h2>
+    <figure class="table nonumber">
+      <table class="t3 small">
+        <thead>
+          <tr><th></th><th class="sep">$N$</th><th>$d_{\text{model}}$</th><th>$d_{ff}$</th><th>$h$</th><th>$d_k$</th><th>$d_v$</th><th>$P_{drop}$</th><th>$\epsilon_{ls}$</th><th>train steps</th><th class="sep">PPL (dev) ↓</th><th>BLEU (dev) ↑</th><th>params ×10⁶</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="c">base</td><td class="c sep">6</td><td class="c">512</td><td class="c">2048</td><td class="c">8</td><td class="c">64</td><td class="c">64</td><td class="c">0.1</td><td class="c">0.1</td><td class="c">100K</td><td class="num sep">4.92</td><td class="num">25.8</td><td class="num">65</td></tr>
+          <tr class="midrule"><td class="c" rowspan="4">(D)</td><td class="sep"></td><td></td><td></td><td></td><td></td><td></td><td class="c">0.0</td><td></td><td></td><td class="num sep">5.77</td><td class="num">24.6</td><td></td></tr>
+          <tr><td class="sep"></td><td></td><td></td><td></td><td></td><td></td><td class="c">0.2</td><td></td><td></td><td class="num sep">4.95</td><td class="num">25.5</td><td></td></tr>
+          <tr><td class="sep"></td><td></td><td></td><td></td><td></td><td></td><td></td><td class="c">0.0</td><td></td><td class="num sep">4.67</td><td class="num">25.3</td><td></td></tr>
+          <tr><td class="sep"></td><td></td><td></td><td></td><td></td><td></td><td></td><td class="c">0.2</td><td></td><td class="num sep">5.47</td><td class="num">25.7</td><td></td></tr>
+          <tr class="midrule"><td class="c">(E)</td><td class="c sep" colspan="9">positional embedding instead of sinusoids</td><td class="num sep">4.92</td><td class="num">25.7</td><td></td></tr>
+          <tr class="midrule"><td class="c">big</td><td class="c sep">6</td><td class="c">1024</td><td class="c">4096</td><td class="c">16</td><td></td><td></td><td class="c">0.3</td><td></td><td class="c">300K</td><td class="num sep best">4.33</td><td class="num best">26.4</td><td class="num">213</td></tr>
+        </tbody>
+      </table>
+    </figure>
+    <p class="footnotesize mb-0">(D) no dropout: 24.6 BLEU vs 25.8. (E) learned positional embeddings: 25.7 vs 25.8. The big model combines the larger settings.</p>
+    <p class="scriptsize muted mt-1">Table 3, rows base, (D), (E), big. Blank = base value. Bold as in the paper (best dev PPL and BLEU). EN→DE dev set, single runs. $P_{drop}$: dropout; $\epsilon_{ls}$: label smoothing.</p>
+    <p class="source">Paper Table 3 (base, D, E, big) and Sec. 6.2</p>
+  </section>
+
+  <section class="slide" data-section="Evidence" data-slide-refs="false">
+    <h2>The same model reaches 92.7 F1 on WSJ parsing</h2>
+    <figure class="table nonumber">
+      <table class="compact footnotesize">
+        <thead><tr><th class="l">Parser</th><th class="l">Training</th><th>WSJ 23 F1 ↑</th></tr></thead>
+        <tbody>
+          <tr><td class="l">Vinyals &amp; Kaiser el al. (2014) <cite>KVparse15</cite></td><td class="l">WSJ only, discriminative</td><td class="num">88.3</td></tr>
+          <tr><td class="l">Petrov et al. (2006) <cite>petrov-EtAl:2006:ACL</cite></td><td class="l">WSJ only, discriminative</td><td class="num">90.4</td></tr>
+          <tr><td class="l">Zhu et al. (2013) <cite>zhu-EtAl:2013:ACL</cite></td><td class="l">WSJ only, discriminative</td><td class="num">90.4</td></tr>
+          <tr><td class="l">Dyer et al. (2016) <cite>dyer-rnng:16</cite></td><td class="l">WSJ only, discriminative</td><td class="num">91.7</td></tr>
+          <tr class="midrule ours"><td class="l">Transformer (4 layers)</td><td class="l">WSJ only, discriminative</td><td class="num">91.3</td></tr>
+          <tr class="midrule"><td class="l">Zhu et al. (2013) <cite>zhu-EtAl:2013:ACL</cite></td><td class="l">semi-supervised</td><td class="num">91.3</td></tr>
+          <tr><td class="l">Huang &amp; Harper (2009) <cite>huang-harper:2009:EMNLP</cite></td><td class="l">semi-supervised</td><td class="num">91.3</td></tr>
+          <tr><td class="l">McClosky et al. (2006) <cite>mcclosky-etAl:2006:NAACL</cite></td><td class="l">semi-supervised</td><td class="num">92.1</td></tr>
+          <tr><td class="l">Vinyals &amp; Kaiser el al. (2014) <cite>KVparse15</cite></td><td class="l">semi-supervised</td><td class="num">92.1</td></tr>
+          <tr class="midrule ours"><td class="l">Transformer (4 layers)</td><td class="l">semi-supervised</td><td class="num">92.7</td></tr>
+          <tr class="midrule"><td class="l">Luong et al. (2015) <cite>multiseq2seq</cite></td><td class="l">multi-task</td><td class="num">93.0</td></tr>
+          <tr><td class="l">Dyer et al. (2016) <cite>dyer-rnng:16</cite></td><td class="l">generative</td><td class="num">93.3</td></tr>
+        </tbody>
+      </table>
+    </figure>
+    <p class="scriptsize muted center">4 layers, $d_{\text{model}}=1024$; only dropout, learning rate and beam tuned on Section 22. No bold in the paper's table; shaded rows: presenter highlight.</p>
+    <p class="source">Paper Table 4 and Sec. 6.3 (row labels verbatim); cited parsers listed under References</p>
+  </section>
+
+  <section class="slide" data-section="Evidence">
+    <h2>Some heads follow long-distance dependencies</h2>
+    <figure class="nonumber">
+      <img src="figures/attention-vis-making.png" style="max-height:400px;display:block;margin:0 auto" alt="Encoder self-attention from the word 'making', layer 5 of 6 (Paper Fig. 3)">
+    </figure>
+    <p class="small center mb-0">Encoder self-attention, layer 5 of 6, from “making” (colors = heads): several heads attend to “more difficult”.</p>
+    <p class="footnotesize muted center mt-0">Qualitative, hand-picked example; no quantitative interpretability analysis in the paper.</p>
+    <p class="source">Paper Fig. 3 (appendix) and Sec. 4</p>
+  </section>
+
+  <!-- Assessment -->
+  <section class="slide" data-section="Assessment">
+    <h2>What the evidence does and does not show</h2>
+    <figure class="table nonumber">
+      <table class="full small">
+        <thead><tr><th class="l">Claim</th><th class="l">Supported by</th><th class="l">Open or weaker</th></tr></thead>
+        <tbody>
+          <tr><td class="l">Better translation</td><td class="l">BLEU on two WMT14 pairs</td><td class="l">Single runs, no variance; BLEU only; 41.0 vs 41.8 EN-FR inconsistency</td></tr>
+          <tr><td class="l">Cheaper training</td><td class="l">Estimated FLOPs, wall-clock</td><td class="l">Estimate assumes per-GPU throughput; not measured</td></tr>
+          <tr><td class="l">More parallel</td><td class="l">Table 1 analysis</td><td class="l">$O(n^2 \cdot d)$ per layer: long inputs need restricted attention, proposed but not tested</td></tr>
+          <tr><td class="l">Design choices matter</td><td class="l">Table 3 dev-set variations</td><td class="l">One factor at a time, single runs: “consistent with”, not causal</td></tr>
+          <tr><td class="l">Interpretable heads</td><td class="l">Appendix visualizations</td><td class="l">Hand-picked, qualitative</td></tr>
+        </tbody>
+      </table>
+    </figure>
+    <p class="source">Paper Sec. 4, 6, 7 and appendix; presenter assessment</p>
+  </section>
+
+  <section class="slide" data-section="Assessment">
+    <h2>Takeaways</h2>
+    <ol>
+      <li>Replacing recurrence with attention trades $O(n)$ sequential steps for $O(n^2 \cdot d)$ parallel work.</li>
+      <li>Multi-head attention + residual Add &amp; Norm + position-wise FFN is the whole layer; positions enter only through $PE$.</li>
+      <li>On WMT14, it beat recurrent and convolutional systems in BLEU at a fraction of their estimated cost.</li>
+    </ol>
+    <div class="block alert" data-title="Discussion">The quadratic $O(n^2 \cdot d)$ term was minor for sentences. Which design choice would you revisit first for very long inputs, and why?</div>
+    <p class="source">Presenter synthesis based on Paper Table 1, 2 and Sec. 3</p>
+  </section>
+
+  <section class="slide references">
+    <h2>References</h2>
+  </section>
+
+  <section class="slide closing-slide" data-logos="mbzuai"></section>
+
+</main>
+</body>
+</html>
