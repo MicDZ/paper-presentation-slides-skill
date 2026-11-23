@@ -87,7 +87,7 @@ Map the paper into a talk arc: question/gap, thesis, method in data-flow order, 
 
 Follow [design-guide.md](design-guide.md). Export a Zotero record to `references.bib` only when the deck needs a bibliography and Zotero is available; Zotero is not a prerequisite for this skill. Keep Zotero item keys distinct from BibTeX citation keys.
 
-When the deck contains equations, also follow [formula-notation.md](formula-notation.md): define every symbol on the slide where it first appears, fill the `Formula audit` table in `SOURCES.md` while drafting rather than at the end, and in HTML decks add each symbol to the notation-hover glossary. The glossary is an auxiliary Q&A aid and never replaces on-slide definitions.
+When the deck contains equations, also follow [formula-notation.md](formula-notation.md): define every symbol on the slide where it first appears, in that slide's single Notation box, fill the `Formula audit` table in `SOURCES.md` while drafting rather than at the end, and in HTML decks add each symbol to the notation-hover glossary. The glossary is an auxiliary Q&A aid and never replaces on-slide definitions.
 
 Use compact visible provenance on every evidence-bearing slide:
 
@@ -150,7 +150,7 @@ Check:
 - left/right and top/bottom visual balance, intentional negative space, and a stable optical center;
 - body text readability from a room, not just at full-screen zoom;
 - figure resolution, aspect ratio, crop correctness, legends, and axes;
-- equation fit; every formula symbol defined on the slide where it first appears, checked on the PDF/PNGs where hover tooltips are absent;
+- equation fit; every formula symbol defined on the slide where it first appears, inside that slide's one Notation box directly below the formulas, with no definitions elsewhere and the same box style and position on every slide; checked on the PDF/PNGs where hover tooltips are absent;
 - tables complete relative to the paper (all rows and baselines, no synthetic rows), with metric directions, units, and the paper's bold/underline meaning;
 - caveats on a frame only where they change how a number on it is read;
 - no cross-slide references such as "see Slide 8";

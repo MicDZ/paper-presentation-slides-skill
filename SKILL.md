@@ -48,7 +48,8 @@ After any theme refresh, recompile and repeat the full visual QA because typogra
 - Reproduce result tables completely: all rows and baselines, no synthetic "best other method" rows, and the paper's bold/underline meaning. Split a large table or use a smaller font instead of selecting rows.
 - Introduce evaluation conditions and metric meanings before interpreting results. Put a caveat on a frame only when it changes how a number on that frame is read; otherwise keep it in speaker remarks or `SOURCES.md`.
 - **Define every symbol in a formula explicitly on the slide where it first appears**, whatever the audience; audience depth only sets how much detail to give. Keep the complete formula audit in `SOURCES.md` ([references/formula-notation.md](references/formula-notation.md)).
-- In HTML decks, also fill the notation-hover glossary for every symbol. Hover is only an auxiliary aid: presenters normally do not use it during the talk, only for convenience in Q&A. It never counts as a definition, and tooltips do not appear in the PDF.
+- **Put all of a slide's symbol definitions in one Notation box**, directly below its formula(s), with the same style and position on every slide and entries in compact columns (not one line per symbol), so the audience always knows where to find the symbols of a new formula. No definitions in bullets, prose, or captions.
+- In HTML decks, the Notation-box rows also feed the notation hover; add deck-glossary entries only for symbols outside any box. Hover is only an auxiliary aid: presenters normally do not use it during the talk, only for convenience in Q&A. It never counts as a definition, and tooltips do not appear in the PDF.
 - Visibly distinguish reported claims from presenter synthesis. Use compact source locators such as `Paper Fig. 3`, `Table 2`, `Eq. 4`, or `Supplement Sec. B` on every frame containing borrowed or adapted evidence.
 - Do not use cross-slide references such as "see Slide 8"; they break on every reorder. Repeat the needed element compactly instead.
 - Keep paper authorship and presentation authorship distinct on the title page.
@@ -74,7 +75,7 @@ For HTML it runs the theme's headless-Chrome QA report (overflows, missing citat
 - a successful build with no unresolved files, citations, references/labels, KaTeX or LaTeX errors, content overflows, or scaled/missing frame titles (Beamer builds without shell escape);
 - visual inspection showing one clear visual anchor per frame, balanced composition, no clipping/overlap, no broken glyphs, readable text, undistorted figures, and no misleading emphasis;
 - a title-vs-evidence check: every claim-style title is supported by evidence visible on that same frame, not by a table elsewhere or by rows the frame itself marks as confounded;
-- every formula symbol defined on the slide where it first appears, checked in the rendered PDF/images (where hover tooltips are absent); in HTML decks a glossary with no unused keys; the complete formula audit in `SOURCES.md`;
+- every formula symbol defined on the slide where it first appears, in that slide's single Notation box (same style and position throughout, no definitions elsewhere), checked in the rendered PDF/images (where hover tooltips are absent); in HTML decks a glossary with no unused keys; the complete formula audit in `SOURCES.md`;
 - result tables complete relative to the paper, with the paper's emphasis meaning preserved;
 - title-page presenter and all three footer fields matching the confirmed wording exactly;
 - an editable project containing the theme snapshot, `THEME_UPSTREAM.md`, and all dependencies needed to rebuild;

@@ -63,13 +63,13 @@ Anchor on a focus crop of the overview figure for this stage (see Figures). Tell
 
 1. **Problem:** what this module is for, i.e. which gap it closes;
 2. **How:** the idea in general terms, one or two sentences;
-3. **Uses:** its inputs, outputs, and key components, with only the notation the explanation needs.
+3. **Uses:** its inputs, outputs, and key components. Any symbols go in the slide's Notation box, not in this text.
 
 Restating each equation in prose works poorly; explain what the module achieves and let the equation, if shown, carry the detail. If an ablation directly justifies the design choice, a small comparison beside it is better than one many slides later.
 
 ### Equation frame
 
-Show an equation only when the explanation uses it. Read [formula-notation.md](formula-notation.md): define every symbol explicitly on the slide where it first appears (a short `where` list is usually enough), and keep the complete audit in `SOURCES.md`. In HTML decks the notation hover is only a Q&A aid on top of this. For a multi-term objective, group terms by function and say what minimizing each term encourages.
+Show an equation only when the explanation uses it. Read [formula-notation.md](formula-notation.md): define every symbol explicitly on the slide where it first appears, all inside one Notation box directly below the formula(s), styled and placed the same way on every slide, and keep the complete audit in `SOURCES.md`. In HTML decks the notation hover is only a Q&A aid on top of this. For a multi-term objective, group terms by function and say what minimizing each term encourages.
 
 ### Evaluation-protocol frame
 
@@ -168,7 +168,7 @@ Review the whole deck on the contact sheet (`rendered/contact-*.png`) for repeat
 ## Lessons from reviewed decks
 
 - Text that restates the figure, title, or another slide was the most common reviewer deletion.
-- Full symbol tables on every equation frame were unnecessary for an expert audience; the complete audit fits better in `SOURCES.md`.
+- Large symbol tables listing types, shapes, and roles on every equation frame were too heavy; a compact Notation box (symbol and short meaning) on the slide plus the complete audit in `SOURCES.md` works better. Every symbol is still defined on the slide where it first appears.
 - Module frames that walked through the data flow with a focus crop were easier to follow than frames that paraphrased equations.
 - Selected-row tables and synthetic comparison rows misled; full tables, split if necessary, did not.
 - Claim titles sometimes relied on tables not shown on the frame, or on rows the frame itself marked as confounded.
